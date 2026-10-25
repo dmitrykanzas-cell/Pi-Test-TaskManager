@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
   "type": "PI_RUN",
-  "startedAt": "2026-10-25T17:22:21.488Z",
   "status": "APPROVE",
   "steps": [
     {
@@ -41,10 +40,9 @@
     {
       "actor": "JEV_VERIFIER",
       "decision": "APPROVE",
-      "verdictPath": "C:\\Users\\ThinkPad\\AppData\\Local\\Temp\\pi-orchestrator-xfpF5k\\VERDICT.json"
+      "verdictPath": "VERDICT.json"
     }
   ],
-  "completedAt": "2026-10-25T17:22:39.579Z",
   "evidence": [
     "run-build-001",
     "run-test-001",

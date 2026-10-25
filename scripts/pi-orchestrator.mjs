@@ -65,7 +65,6 @@ async function updateState() {
 const runRecord = {
   schemaVersion: 1,
   type: "PI_RUN",
-  startedAt: new Date().toISOString(),
   status: "RUNNING",
   steps: [],
 };
@@ -118,10 +117,9 @@ try {
     jevDecision: { decision: "APPROVE", stopReason: "stop", confidence: 1 },
   });
   assert.equal(verdict.decision, "APPROVE");
-  runRecord.steps.push({ actor: "JEV_VERIFIER", decision: verdict.decision, verdictPath: join(tempDir, "VERDICT.json") });
+  runRecord.steps.push({ actor: "JEV_VERIFIER", decision: verdict.decision, verdictPath: "VERDICT.json" });
 
   runRecord.status = "APPROVE";
-  runRecord.completedAt = new Date().toISOString();
   runRecord.evidence = evidence.map((item) => item.id);
   runRecord.limitation = "Luna/Jev provider calls are represented by typed local boundaries; tools, filesystem, Router and Verifier run for real.";
   await writeFile(outputPath, `${JSON.stringify(runRecord, null, 2)}\n`, "utf8");
@@ -130,7 +128,6 @@ try {
 } catch (error) {
   runRecord.status = "BLOCKED";
   runRecord.error = { code: error.code ?? "PI_RUN_FAILED", message: error.message };
-  runRecord.completedAt = new Date().toISOString();
   await writeFile(outputPath, `${JSON.stringify(runRecord, null, 2)}\n`, "utf8");
   console.error(JSON.stringify({ status: runRecord.status, outputPath, error: runRecord.error }, null, 2));
   process.exitCode = 1;
