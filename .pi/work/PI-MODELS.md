@@ -4,91 +4,118 @@
 
 ## Основная цель Pi
 
-Pi — самостоятельная среда разработки на базе ИИ-агентов. Тестовый TaskManager нужен как полигон, чтобы проверить реальный цикл Pi на C#-проекте, но не является основной целью.
-
-План ролей:
+Pi — самостоятельная среда разработки на базе ИИ-агентов. TaskManager — только полигон для проверки реального цикла Pi на C#-проекте.
 
 ```text
 Luna  -> основной исполнитель
-Opus  -> ревьюер через файлы .pi/work/*.md
+Opus  -> ревьюер через .pi/work/*.md
 Jev   -> типизированный контроль решений
 ```
 
-## Текущая конфигурация Pi
+## Текущая конфигурация
 
-Файл локальной конфигурации: `%USERPROFILE%\.pi\agent\models.json`.
+Локальный файл: `%USERPROFILE%\.pi\agent\models.json`.
 
-Секреты в этот документ не записываются. Ключ AnyModel хранится только через переменную окружения `HERMES_CUSTOM_ANYMODEL_ORG_API_KEY`.
+Секреты в документ не записываются. Ключ AnyModel используется через `HERMES_CUSTOM_ANYMODEL_ORG_API_KEY`.
 
-### Рабочие модели
+| Роль | Provider | Pi model ID | Тип | Статус |
+|---|---|---|---|---|
+| Luna | `anymodel` | `cx/gpt-6-luna` | chat | проверена через Pi: `PI_LUNA_OK` |
+| Opus | `anymodel` | `cc/claude-opus-5-5` | chat | проверена через Pi: `PI_OPUS_OK` |
+| Jev | `anymodel` | `jev/jev-latest` | classifier | настроен; отдельный System One probe успешен |
 
-| Роль | Provider | Model ID | Статус |
-|---|---|---|---|
-| Luna | `anymodel` | `cx/gpt-6-luna` | настроена и проверена через Pi: `PI_LUNA_OK` |
-| Opus | `anymodel` | `cc/claude-opus-5-5` | настроена и проверена через Pi: `PI_OPUS_OK` |
-| Jev | отсутствует | `pg/jev-latest` ранее планировалась | не настроен |
+## Jev
 
-### Старая конфигурация
+Источник данных: карточка Jev у провайдера, предоставленная пользователем:
 
-До изменения был только provider `colibri`:
+- карточка: `pg/jev-latest`;
+- назначение: decision engine, typed verdicts, не чат;
+- context: 32K;
+- цена: `$0.05` за 1M токенов;
+- коэффициент: `×1`, то есть `5¢ × 1 = $0.05`;
+- списание: токены запроса ×1.
+
+В Pi Jev описан как classifier:
+
+- `type`: `classifier`;
+- `api`: `typesafe-system-one`;
+- endpoint base: `https://anymodel.org/v1`;
+- Pi вызывает `/systemone`;
+- wire-level model ID, подтверждённый прямым запросом: `jev/jev-latest`.
+
+Важно: `pg/jev-latest` — ID из карточки/маршрутизации провайдера, но прямой запрос AnyModel с ним ответил `selected model unavailable`. Тот же System One запрос с `jev/jev-latest` вернул корректное typed-решение:
+
+```text
+answers.approved.type = noul
+answers.approved.noul = 0.97
+usage.total_tokens = 298
+```
+
+Следовательно, в `models.json` используется `jev/jev-latest`, а исходный ID карточки сохранён здесь для трассировки.
+
+Classifier-модели не выбираются обычным `/model`. Они вызываются из `codemode` через `models.getModelOfType("classifier", "anymodel", "jev/jev-latest")` и `models.classify(...)`.
+
+## Старая конфигурация
+
+До настройки был provider `colibri`:
 
 - endpoint: `http://127.0.0.1:18081/v1`;
-- модель: локальная Qwen2.5 7B Instruct Q4_K_M;
+- локальная Qwen2.5 7B Instruct Q4_K_M;
 - фактический запрос завершался ошибкой соединения;
-- резервная копия сохранена локально в `%USERPROFILE%\.pi\agent\backups\models.json.2026-10-25-colibri.json`.
+- backup: `%USERPROFILE%\.pi\agent\backups\models.json.2026-10-25-colibri.json`.
 
-`colibri` оставлен в конфигурации как резервный provider, но не считается рабочей основной моделью.
+`colibri` оставлен как резервный provider, но не является рабочей основной моделью.
 
 ## Проверки
 
 Проверено:
 
 ```text
-pi --list-models
-  anymodel / cx/gpt-6-luna
-  anymodel / cc/claude-opus-5-5
-  colibri / local Qwen2.5 7B
-
 pi --model cx/gpt-6-luna --no-tools --no-session -p ...
   PI_LUNA_OK
 
 pi --model cc/claude-opus-5-5 --no-tools --no-session -p ...
   PI_OPUS_OK
+
+POST https://anymodel.org/v1/systemone
+  model: jev/jev-latest
+  typed answer: noul = 0.97
+  total_tokens: 298
 ```
 
-Прямой каталог AnyModel подтвердил наличие Luna и Opus. Модель Jev в каталоге AnyModel отсутствует. Проверка `pi auth check --provider typesafe --model jev-latest` показала `invalid_state`; отдельного `TYPESAFE_API_KEY` в окружении нет.
-
-## Следующий шаг по основной цели
-
-Не расширять TaskManager ради расширения функциональности. Следующий рабочий этап — описать и проверить минимальный Pi-flow:
+## Следующий Pi-flow
 
 1. Luna читает рабочие файлы и реализует задачу.
 2. Результат и состояние фиксируются в `.pi/work/*.md`.
 3. Opus получает те же файлы и выполняет ревью.
-4. Jev подключается после получения отдельного рабочего провайдера/ключа либо заменяется проверенным classifier-провайдером с явной фиксацией решения.
+4. Jev проверяет типизированные решения через classifier API.
 5. Каждый законченный срез фиксируется Git-коммитом.
+
+## Журнал
+
+- 2026-10-25: сохранён backup старой конфигурации `colibri`.
+- 2026-10-25: добавлен `anymodel` с Luna и Opus; обе модели проверены через Pi.
+- 2026-10-25: подтверждён Jev; исправлено различие ID карточки `pg/jev-latest` и рабочего AnyModel API ID `jev/jev-latest`.
+- 2026-10-25: добавлен classifier `typesafe-system-one` с ценой `$0.05/1M`, коэффициентом `×1` и context `32K`.
+
+Источник формата конфигурации: локальная документация Pi 1.0.4, `docs/models.md` и `docs/custom-provider.md`.
+
+Серверную конфигурацию Hermes этот файл не меняет.
 
 ## Git
 
-Первый Git-коммит создаётся после включения документации конфигурации и проверки Pi. Секретные файлы и артефакты сборки не должны попадать в репозиторий.
+Pi-Test-TaskManager уже содержит первый коммит:
 
-## Ограничение
+```text
+05ae6e5 feat: establish Pi TaskManager pilot
+```
 
-Переименование роли Jev в обычную чат-модель Luna/Opus было бы неправильным: Jev нужен как typed-контроль, поэтому до отдельной проверки classifier endpoint он остаётся явно обозначенным блокером.
-
-Источник формата `models.json`: локальная документация Pi 1.0.4 (`docs/models.md`, `docs/settings.md`).
-
-> Примечание: дата и результаты отражают локальную проверку на Windows 10; серверную конфигурацию Hermes этот файл не меняет.
-
-## Журнал конфигурации
-
-- 2026-10-25: сохранён backup старой конфигурации `colibri`.
-- 2026-10-25: добавлен provider `anymodel` с Luna и Opus; обе модели реально проверены через Pi.
-- 2026-10-25: Jev оставлен как отдельный незакрытый блокер из-за отсутствия модели в AnyModel и отсутствия валидной TypeSafe-аутентификации.
-- 2026-10-25: добавлен `.gitignore`; секреты и build-артефакты исключены.
+После изменения конфигурации Jev нужно сделать отдельный коммит.
 
 ## References
 
-- Pi 1.0.4 local docs: `%APPDATA%\npm\node_modules\@earendil-works\pi-coding-agent\docs\models.md`
-- Pi agent config: `%USERPROFILE%\.pi\agent\models.json`
+- Pi config: `%USERPROFILE%\.pi\agent\models.json`
+- Pi docs: `%APPDATA%\npm\node_modules\@earendil-works\pi-coding-agent\docs\models.md`
 - AnyModel endpoint: `https://anymodel.org/v1`
+- Provider-facing Jev ID: `pg/jev-latest`
+- Working AnyModel System One ID: `jev/jev-latest`
