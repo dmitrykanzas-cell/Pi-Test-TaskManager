@@ -192,12 +192,18 @@ typed operation → policy check → physical manifest → ROUTING.jsonl → new
 `RETAIN` остаётся journal-level операцией без изменения фрагмента.
 
 Pi сохраняет `previousManifestId`, `manifestHistory` и `fragmentHistory`; запись
-manifest и routing выполняется через временные файлы с последующим rename.
+manifest и routing выполняется через transaction marker, временные файлы и
+последующий rename. Это не делает два разных файла одной FS-транзакцией: при
+сбое между заменами незавершённая транзакция обнаруживается при следующем запуске
+и обрабатывается fail-closed.
 
 Проверены сценарии: добавить observation, обновить hypothesis, устареть canonical,
 удалить transient, отклонить изменение canonical, зарегистрировать conflict и
 отклонить неизвестный fragment. Для rejected operations сохраняется routing-запись
-с `result=REJECTED`, физический контекст не изменяется.
+с `result=REJECTED`, физический контекст не изменяется. Дополнительно проверены
+полный ADD-контракт, неизменяемость provenance/security-полей при UPDATE,
+обязательные `operationId`/`baseManifestId`, stale manifest, симметричная запись
+conflict и восстановление после незавершённой транзакции.
 
 Артефакты: `scripts/context-manager.mjs` и `scripts/context-manager.test.mjs`.
 
@@ -350,13 +356,15 @@ evidence, а ревьюер может найти отклонение от тр
 
 ## Текущая точка
 
-Проект достиг минимального состояния для ручной проверки базового workflow Pi:
+Проект достиг состояния для ручной проверки базового workflow Pi:
 есть рабочие файлы `.pi/work`, доменная модель, JSON-хранилище, консольный
 сценарий, зелёные build/test и проверенный базовый вызов Jev classifier через
-Pi codemode. Контракт manifest/evidence и локальный валидатор уже реализованы;
-контекстный Router и Context Manager policy ещё не реализованы; evidence-based
-Verifier реализован и проверен отдельным прогоном.
+Pi codemode. Контракт manifest/evidence, evidence-based Verifier и Context Manager
+policy уже реализованы и проверены. Context Manager применяет typed-операции,
+обновляет физический manifest, ведёт routing journal и сохраняет историю версий.
+Контекстный Router пока не реализован и относится к этапу 8.
 
-Следующий архитектурный шаг — этап 7: Jev Context Manager. Полный MVP Pi ещё не
-завершён; текущие артефакты доказывают контракт, policy-проверки, независимое
-ревью и сохранение evidence-based verdict, но не качество Router/Context Manager.
+Этап 7 завершён. Полный MVP Pi ещё не завершён: текущие артефакты доказывают
+контракт, policy-проверки, Context Manager, независимое ревью и сохранение
+evidence-based verdict, но Router, полный сквозной прогон и автоматизация
+остаются этапами 8–11.
