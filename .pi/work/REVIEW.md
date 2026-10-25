@@ -8,6 +8,25 @@
 
 `APPROVE`
 
+## Follow-up independent review
+
+Дополнительное read-only ревью по исходному состоянию этапа выявило `REQUEST_CHANGES`.
+Главный дефект: старый валидатор принимал forged `APPROVE` по одним только `kind`,
+даже если evidence имело `status=observed` и описывало незавершённый review.
+Также `ROUTING.jsonl` фактически не валидировался, а typed-поля проверялись только
+на наличие ключа.
+
+После этого findings валидатор усилен:
+
+- `APPROVE` требует `missingEvidence=[]` и только `verified` evidence;
+- fragment/observation metadata проверяется по типам и непустым значениям;
+- `ROUTING.jsonl` читается и проверяет manifestId, операции, ссылки и причины;
+- добавлены regression-тесты для observed APPROVE, sensitivity, typed fields,
+  malformed routing и broken routing references.
+
+Главный regression-case реально проверен: forged APPROVE отклонён с ошибками
+`APPROVE requires review evidence` и `APPROVE evidence must be verified`.
+
 ## Проверенные требования
 
 - `CONTEXT-MANIFEST.json` содержит 4 фрагмента с `id`, `kind`, `text`, `source`, `sourceVersion`, `authority`, `status`, `freshness`, `sensitivity`, `targetModels`, `relatedFragments`.
