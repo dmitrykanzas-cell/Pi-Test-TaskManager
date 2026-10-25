@@ -91,11 +91,21 @@ if (manifest) {
         errors.push(`${manifestPath}: duplicate fragment id ${fragment.id}`);
       }
       fragmentIds.add(fragment.id);
+      if (!Array.isArray(fragment.targetModels) || !Array.isArray(fragment.relatedFragments)) {
+        errors.push(`${manifestPath}: fragment ${fragment.id ?? "<unknown>"} metadata arrays are invalid`);
+      }
       if (fragment.kind === "OBSERVATIONS" && fragment.authority === "canonical") {
         errors.push(`${manifestPath}: observation ${fragment.id} cannot be canonical`);
       }
       if (fragment.sensitivity === "sensitive" && fragment.targetModels?.includes("external")) {
         errors.push(`${manifestPath}: sensitive fragment ${fragment.id} targets external model`);
+      }
+    }
+    for (const fragment of manifest.fragments) {
+      for (const relatedId of fragment.relatedFragments ?? []) {
+        if (!fragmentIds.has(relatedId)) {
+          errors.push(`${manifestPath}: fragment ${fragment.id} references missing fragment ${relatedId}`);
+        }
       }
     }
   }
@@ -117,6 +127,14 @@ if (verdict) {
     for (const ref of verdict.evidenceRefs) {
       if (!observations.has(ref)) {
         errors.push(`${verdictPath}: evidence ref does not exist: ${ref}`);
+      }
+    }
+    if (verdict.decision === "APPROVE") {
+      const evidenceKinds = new Set(verdict.evidenceRefs.map((ref) => observations.get(ref)?.kind));
+      for (const requiredKind of ["build", "test", "diff", "review"]) {
+        if (!evidenceKinds.has(requiredKind)) {
+          errors.push(`${verdictPath}: APPROVE requires ${requiredKind} evidence`);
+        }
       }
     }
   }
