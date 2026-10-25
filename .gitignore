@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+*.user
+*.suo
+src/TaskManager/bin/Debug/net8.0/tasks.json
+.pi/agent/
+.env
+*.key
