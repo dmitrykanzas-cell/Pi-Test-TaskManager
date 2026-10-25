@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "type": "CONTEXT_E2E",
+  "startedAt": "2026-10-25T16:50:15.132Z",
+  "actors": [
+    "REQUEST",
+    "PI",
+    "JEV_ROUTER",
+    "LUNA",
+    "TOOLS",
+    "OPUS",
+    "JEV_VERIFIER",
+    "HUMAN"
+  ],
+  "steps": [
+    {
+      "actor": "REQUEST",
+      "output": {
+        "id": "request-stage-10-001",
+        "text": "Проверить воспроизводимый контекстный прогон TaskManager.",
+        "requiredFragmentIds": [
+          "goal-001",
+          "decision-001"
+        ]
+      }
+    },
+    {
+      "actor": "PI",
+      "action": "candidate-retrieval",
+      "input": {
+        "id": "request-stage-10-001",
+        "text": "Проверить воспроизводимый контекстный прогон TaskManager.",
+        "requiredFragmentIds": [
+          "goal-001",
+          "decision-001"
+        ]
+      },
+      "output": {
+        "candidateIds": [
+          "goal-001",
+          "decision-001",
+          "e2e-criteria-001"
+        ]
+      }
+    },
+    {
+      "actor": "JEV_ROUTER",
+      "role": "luna",
+      "output": {
+        "state": "READY",
+        "manifestId": "stage-6-contract-001-route-luna-20261025T140000000Z",
+        "selectedIds": [
+          "goal-001",
+          "decision-001"
+        ]
+      }
+    },
+    {
+      "actor": "LUNA",
+      "output": {
+        "status": "executed",
+        "toolCount": 3
+      }
+    },
+    {
+      "actor": "TOOLS",
+      "output": {
+        "evidenceIds": [
+          "e2e-build-001",
+          "e2e-test-001",
+          "e2e-diff-001",
+          "e2e-review-001"
+        ]
+      }
+    },
+    {
+      "actor": "JEV_ROUTER",
+      "role": "opus",
+      "output": {
+        "state": "READY",
+        "manifestId": "stage-6-contract-001-route-opus-20261025T140100000Z",
+        "selectedIds": [
+          "goal-001",
+          "decision-001",
+          "e2e-diff-001",
+          "e2e-criteria-001"
+        ]
+      }
+    },
+    {
+      "actor": "OPUS",
+      "input": {
+        "manifest": "C:\\Users\\ThinkPad\\AppData\\Local\\Temp\\pi-context-e2e-Hy1L1S\\CONTEXT-MANIFEST.opus.json"
+      },
+      "output": {
+        "decision": "APPROVE",
+        "stopReason": "stop",
+        "confidence": 1,
+        "source": "deterministic-e2e-harness",
+        "note": "This is a typed fixture for the local pipeline boundary, not an external Opus call."
+      }
+    },
+    {
+      "actor": "JEV_VERIFIER",
+      "branch": "APPROVE",
+      "output": {
+        "schemaVersion": 1,
+        "decision": "APPROVE",
+        "confidence": 1,
+        "evidenceRefs": [
+          "e2e-build-001",
+          "e2e-test-001",
+          "e2e-diff-001",
+          "e2e-review-001"
+        ],
+        "missingEvidence": [],
+        "reason": "Jev typed decision",
+        "stopReason": "stop",
+        "source": {
+          "type": "jev",
+          "decision": "APPROVE"
+        }
+      }
+    },
+    {
+      "actor": "JEV_VERIFIER",
+      "branch": "INSUFFICIENT_EVIDENCE",
+      "output": {
+        "schemaVersion": 1,
+        "decision": "INSUFFICIENT_EVIDENCE",
+        "confidence": 1,
+        "evidenceRefs": [
+          "e2e-build-001",
+          "e2e-test-001"
+        ],
+        "missingEvidence": [
+          "verified diff evidence",
+          "verified review evidence"
+        ],
+        "reason": "Jev typed decision; missing kinds: diff, review",
+        "stopReason": "stop",
+        "source": {
+          "type": "jev",
+          "decision": "APPROVE"
+        }
+      }
+    },
+    {
+      "actor": "HUMAN",
+      "output": {
+        "finalDecision": "manual approval remains outside the harness",
+        "commit": "not performed by E2E harness"
+      }
+    }
+  ],
+  "completedAt": "2026-10-25T16:50:29.525Z",
+  "result": "PASS",
+  "limitation": "Opus and Jev calls are represented by typed boundary fixtures; build/test and filesystem routing/verifier paths are real."
+}

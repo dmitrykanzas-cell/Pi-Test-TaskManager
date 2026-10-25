@@ -332,6 +332,19 @@ REQUEST → Pi candidate retrieval → Jev Router
 
 Проверка: два этапа — обычный `APPROVE` и преднамеренный `INSUFFICIENT_EVIDENCE`.
 
+Фактически выполнено локальным воспроизводимым harness `scripts/context-e2e.mjs`:
+
+- REQUEST зафиксирован как typed input;
+- Pi собрал 3 кандидата;
+- Router сформировал отдельные manifests для Luna и Opus;
+- Luna-path выполнил реальные `dotnet build`, `dotnet test` и `git diff --check`;
+- evidence записано в изолированный `.pi/work`;
+- Opus получил отдельный manifest с diff/criteria;
+- Verifier прошёл обе ветки: `APPROVE` и `INSUFFICIENT_EVIDENCE`;
+- сохранена трасса `.pi/work/E2E-TRACE.json`.
+
+Граница доказательства: локальный harness использует typed boundary fixtures для Luna/Opus/Jev; он не выдаёт их за внешний вызов провайдера. Реальными являются filesystem routing, manifests, evidence, build/test и Verifier policy.
+
 ### 11. Автоматизация модулей Pi
 
 Только после успешного контекстного прогона определить и реализовать минимальные модули Pi:

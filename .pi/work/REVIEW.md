@@ -2,6 +2,14 @@
 
 > Note: this file records the historical Stage 6 review. Stage 9 Verifier policy is implemented and documented in PLAN.md/STATE.md and in `scripts/jev-verifier.mjs`.
 
+## Stage 10 closure note
+
+`scripts/context-e2e.mjs` is the reproducible local Stage 10 harness. It records
+REQUEST, candidate retrieval, separate Luna/Opus manifests, real build/test/diff
+commands, evidence, both Verifier branches, and the human decision boundary in
+`.pi/work/E2E-TRACE.json`. Luna/Opus/Jev provider calls are typed boundary
+fixtures in this harness, not claimed external provider calls.
+
 
 Дата: 2026-10-25
 Ревьюер: Opus через Pi, read-only invocation
