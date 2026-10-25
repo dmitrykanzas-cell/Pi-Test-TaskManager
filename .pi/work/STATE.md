@@ -1,6 +1,6 @@
 # Состояние
 
-- Текущий этап: этап 10 сквозной контекстный прогон завершён; следующий этап — 11 автоматизация модулей Pi.
+- Текущий этап: этап 11 автоматизация модулей Pi завершена; следующий этап отсутствует в MVP.
 - Решение: тестовый проект — локальный консольный TaskManager на C#.
 - Выполнено: solution, рабочие файлы Pi, TaskItem, статусы, приоритеты, JSON-хранилище, поиск/фильтрация и минимальный консольный сценарий.
 - Luna через Pi добавила тест `Query_CombinesTitleSearchWithPriorityFilter`; production-код не изменялся.
@@ -20,5 +20,5 @@
 - Prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; новый Verifier дополнительно доказал чтение evidence и запись typed verdict, но не дал APPROVE.
 - Этап 9 завершён: `scripts/jev-verifier.mjs` разделяет typed decision и evidence policy, поддерживает APPROVE/REQUEST_CHANGES/BLOCKED/INSUFFICIENT_EVIDENCE, блокирует конфликт, provider error, отсутствующие/неподтверждённые evidence и не считает probability доказательством; сценарии и файловая интеграция проверены. Внешний `.pi/work/VERDICT.json` сохранён как фактический INSUFFICIENT_EVIDENCE, локальный APPROVE-тест не выдаётся за внешний Jev verdict.
 - Этап 10 завершён: `scripts/context-e2e.mjs` воспроизводимо прошёл цепочку REQUEST → Pi candidates → Router → Luna-path → real tools/evidence → Opus manifest → Verifier → human boundary; сохранена `.pi/work/E2E-TRACE.json`, обе ветки `APPROVE` и `INSUFFICIENT_EVIDENCE` проверены. Внешние вызовы Luna/Opus/Jev заменены typed boundary fixtures и явно не выдаются за provider run.
-- Этап 11 ещё не выполнен: автоматизация модулей Pi остаётся следующим этапом.
+- Этап 11 завершён: `scripts/pi-orchestrator.mjs` управляет `.pi/work`, Router, build/test/smoke, evidence, Verifier, `PI-RUN.json` и fail-closed обновлением STATE.md.
 - Push, PR и merge не делать автоматически; локальные проверенные микрошаги фиксировать отдельными коммитами.

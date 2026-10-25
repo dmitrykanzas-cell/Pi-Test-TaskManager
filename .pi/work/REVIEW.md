@@ -10,6 +10,14 @@ commands, evidence, both Verifier branches, and the human decision boundary in
 `.pi/work/E2E-TRACE.json`. Luna/Opus/Jev provider calls are typed boundary
 fixtures in this harness, not claimed external provider calls.
 
+## Stage 11 closure note
+
+`scripts/pi-orchestrator.mjs` is the minimal Pi automation boundary. It collects
+context candidates, routes Luna context, runs bounded tools, records evidence,
+invokes the Verifier contract, writes `PI-RUN.json`, and updates `STATE.md` only
+after `APPROVE`. Tool failure is fail-closed. The regression suite proves
+`APPROVE -> BLOCKED -> APPROVE` (failure and recovery).
+
 
 Дата: 2026-10-25
 Ревьюер: Opus через Pi, read-only invocation

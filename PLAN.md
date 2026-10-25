@@ -347,19 +347,29 @@ REQUEST → Pi candidate retrieval → Jev Router
 
 ### 11. Автоматизация модулей Pi
 
-Только после успешного контекстного прогона определить и реализовать минимальные модули Pi:
+Реализовано в `scripts/pi-orchestrator.mjs`:
 
-- управление `.pi/work`;
-- детерминированный сбор кандидатов контекста;
+- управление изолированной копией `.pi/work`;
+- детерминированный сбор кандидатов из `GOAL.md`, `DECISIONS.md` и manifest;
 - вызов Jev Router и применение policy;
-- сборка manifest для конкретной модели;
-- запуск этапа;
-- вызов ревьюера;
-- обработка `QUESTIONS.md`;
-- обновление `STATE.md`;
-- сбор evidence;
+- сборка role-specific manifest для Luna;
+- запуск bounded build/test/smoke;
+- сбор evidence с typed IDs;
 - вызов Jev Verifier;
-- проверка build/test/smoke.
+- запись `.pi/work/PI-RUN.json`;
+- fail-closed обработка: ошибка инструмента даёт `BLOCKED`, `STATE.md` не объявляет этап завершённым;
+- обновление `STATE.md` выполняется только после `APPROVE`.
+
+Проверены две ветки:
+
+- успешный запуск: `APPROVE`;
+- `--simulate-failure`: `BLOCKED`, ненулевой exit code, статус этапа не продвигается.
+
+Ограничение: локальный orchestrator использует typed boundary для внешних Luna/Opus/Jev provider-вызовов; Router, filesystem, build/test/smoke, evidence и Verifier выполняются реально.
+
+Regression-проверка `scripts/pi-orchestrator.test.mjs` подтверждает последовательность `APPROVE → BLOCKED (fail-closed) → APPROVE (recovery)`.
+
+Этап 11 закрыт: все 12 этапов MVP выполнены локально; отдельный provider-run и push остаются вне этого локального automation contract.
 
 ## Критерий MVP
 
