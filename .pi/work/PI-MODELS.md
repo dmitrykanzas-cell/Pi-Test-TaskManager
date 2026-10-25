@@ -4,118 +4,166 @@
 
 ## Основная цель Pi
 
-Pi — самостоятельная среда разработки на базе ИИ-агентов. TaskManager — только полигон для проверки реального цикла Pi на C#-проекте.
+Pi — самостоятельная среда разработки на базе ИИ-агентов. TaskManager — только
+полигон для проверки цикла Pi на C#-проекте.
 
 ```text
 Luna  -> основной исполнитель
-Opus  -> ревьюер через .pi/work/*.md
-Jev   -> типизированный контроль решений
+Opus  -> независимый ревьюер через .pi/work/*.md
+Jev   -> typed Context Manager + Router контекста + Verifier решений
+Pi    -> хранение, retrieval, manifest и execution protocol
 ```
 
 ## Текущая конфигурация
 
 Локальный файл: `%USERPROFILE%\.pi\agent\models.json`.
 
-Секреты в документ не записываются. Ключ AnyModel используется через `HERMES_CUSTOM_ANYMODEL_ORG_API_KEY`.
+Секреты в документ не записываются. Ключ AnyModel используется через переменную
+окружения.
 
 | Роль | Provider | Pi model ID | Тип | Статус |
 |---|---|---|---|---|
-| Luna | `anymodel` | `cx/gpt-6-luna` | chat | проверена через Pi: `PI_LUNA_OK` |
-| Opus | `anymodel` | `cc/claude-opus-5-5` | chat | проверена через Pi: `PI_OPUS_OK` |
-| Jev | `anymodel` | `jev/jev-latest` | classifier | настроен; отдельный System One probe успешен |
+| Luna | `anymodel` | `cx/gpt-6-luna` | chat | проверена через Pi |
+| Opus | `anymodel` | `cc/claude-opus-5-5` | chat | проверена через Pi |
+| Jev | `anymodel` | `jev/jev-latest` | classifier | typed-вызов через codemode проверен |
 
-## Jev
+## Роли
 
-Источник данных: карточка Jev у провайдера, предоставленная пользователем:
+### Luna
 
-- карточка: `pg/jev-latest`;
-- назначение: decision engine, typed verdicts, не чат;
-- context: 32K;
-- цена: `$0.05` за 1M токенов;
-- коэффициент: `×1`, то есть `5¢ × 1 = $0.05`;
-- списание: токены запроса ×1.
+Исполняет задачу: читает manifest и файлы проекта, пишет код/тесты, запускает
+проверки, обновляет рабочее состояние и сообщает о результате.
 
-В Pi Jev описан как classifier:
+### Opus
 
-- `type`: `classifier`;
-- `api`: `typesafe-system-one`;
-- endpoint base: `https://anymodel.org/v1`;
-- Pi вызывает `/systemone`;
-- wire-level model ID, подтверждённый прямым запросом: `jev/jev-latest`.
+Независимо проверяет SPEC, PLAN, CONVENTIONS, diff, результаты инструментов и
+архитектурные последствия. Не пишет код и не ведёт прямой диалог с пользователем.
 
-Важно: `pg/jev-latest` — ID из карточки/маршрутизации провайдера, но прямой запрос AnyModel с ним ответил `selected model unavailable`. Тот же System One запрос с `jev/jev-latest` вернул корректное typed-решение:
+### Jev
+
+Jev не является обычной chat-моделью и не владеет физическими файлами памяти. Pi
+передаёт ему структурированное состояние и typed-вопросы, а Jev возвращает typed
+операции над логическим контекстом.
 
 ```text
-answers.approved.type = noul
-answers.approved.noul = 0.97
-usage.total_tokens = 298
+Pi candidate retrieval → Jev Context Manager → Jev Router → manifest для Luna/Opus
+Luna/Opus → tools/evidence → Jev Verifier → VERDICT.json
 ```
 
-Следовательно, в `models.json` используется `jev/jev-latest`, а исходный ID карточки сохранён здесь для трассировки.
+`Router` и `Verifier` — разные контракты:
 
-Classifier-модели не выбираются обычным `/model`. Они вызываются из `codemode` через `models.getModelOfType("classifier", "anymodel", "jev/jev-latest")` и `models.classify(...)`.
+- Router выбирает релевантные фрагменты из найденных кандидатов, выявляет конфликт и
+  недостающий обязательный контекст;
+- Verifier принимает решение по evidence после работы моделей;
+- Jev не отвечает за полноту retrieval;
+- Jev не переписывает `SPEC.md`, `DECISIONS.md` или другие канонические файлы молча.
 
-## Старая конфигурация
+## Context protocol
 
-До настройки был provider `colibri`:
-
-- endpoint: `http://127.0.0.1:18081/v1`;
-- локальная Qwen2.5 7B Instruct Q4_K_M;
-- фактический запрос завершался ошибкой соединения;
-- backup: `%USERPROFILE%\.pi\agent\backups\models.json.2026-10-25-colibri.json`.
-
-`colibri` оставлен как резервный provider, но не является рабочей основной моделью.
-
-## Проверки
-
-Проверено:
+Pi хранит:
 
 ```text
-pi --model cx/gpt-6-luna --no-tools --no-session -p ...
-  PI_LUNA_OK
-
-pi --model cc/claude-opus-5-5 --no-tools --no-session -p ...
-  PI_OPUS_OK
-
-POST https://anymodel.org/v1/systemone
-  model: jev/jev-latest
-  typed answer: noul = 0.97
-  total_tokens: 298
+CONTEXT-MANIFEST.json  состав контекста конкретной модели
+OBSERVATIONS.jsonl     факты инструментов
+ROUTING.jsonl          решения Router и причины include/exclude
+VERDICT.json           typed verdict с evidenceRefs
 ```
+
+Слои:
+
+```text
+CANONICAL / DECISIONS / TASK_STATE / OBSERVATIONS / HYPOTHESES / TRANSIENT
+```
+
+Каждый фрагмент должен иметь `source`, `sourceVersion`, `authority`, `status`,
+`freshness`, `sensitivity`, `targetModels` и `relatedFragments`.
+
+## Jev Context Manager
+
+Jev может предложить операции `ADD`, `UPDATE`, `REMOVE`, `RETAIN`, `ROUTE` и
+`CONFLICT` над логическими фрагментами контекста. Pi проверяет их policy и применяет
+к хранилищу. Уже отправленный модели prompt не меняется; Pi формирует новый manifest.
+
+`CANONICAL` и `DECISIONS` нельзя изменить или удалить молча. `TRANSIENT` можно удалить
+после запуска, а устаревший фрагмент получает статус `obsolete`; операция сохраняется
+в `ROUTING.jsonl`.
+
+## Jev Router
+
+Router вызывается до Luna или Opus. Pi сначала детерминированно собирает кандидатов
+по путям, тегам, ссылкам и изменённым файлам. Router работает только с этим набором.
+
+Состояния:
+
+```text
+READY
+CONFLICT
+MISSING_REQUIRED_CONTEXT
+INSUFFICIENT_EVIDENCE
+BLOCKED
+```
+
+Результат сохраняется в manifest и routing log. Pi дополнительно применяет policy
+безопасности и лимиты токенов.
+
+## Jev Verifier
+
+Verifier вызывается после build/test/diff/smoke и Opus review. Решения:
+
+```text
+APPROVE
+REQUEST_CHANGES
+BLOCKED
+INSUFFICIENT_EVIDENCE
+```
+
+`APPROVE` требует подходящих evidenceRefs. Probability — сигнал classifier, не
+доказательство корректности кода.
+
+## Проверенный вызов
+
+```text
+provider: anymodel
+model: jev/jev-latest
+api: typesafe-system-one
+stopReason: stop
+answers.approved.type: bool
+answers.approved.probability: 0.74
+```
+
+Это доказывает вызов базового Verifier через Pi codemode. Качество Router,
+полнота retrieval и калибровка probability ещё не проверены.
 
 ## Следующий Pi-flow
 
-1. Luna читает рабочие файлы и реализует задачу.
-2. Результат и состояние фиксируются в `.pi/work/*.md`.
-3. Opus получает те же файлы и выполняет ревью.
-4. Jev проверяет типизированные решения через classifier API.
-5. Каждый законченный срез фиксируется Git-коммитом.
+1. Пользователь и Luna формируют GOAL/SPEC/PLAN.
+2. Pi собирает кандидатов контекста.
+3. Jev Router создаёт typed routing decision.
+4. Pi формирует отдельный manifest для Luna.
+5. Luna реализует этап и запускает tools.
+6. Pi формирует manifest для Opus.
+7. Opus выполняет независимое ревью.
+8. Pi сохраняет observations, diff и review.
+9. Jev Verifier создаёт typed `VERDICT.json` с evidenceRefs.
+10. Пользователь просматривает diff и делает локальный commit.
 
-## Журнал
+## Ограничения
 
-- 2026-10-25: сохранён backup старой конфигурации `colibri`.
-- 2026-10-25: добавлен `anymodel` с Luna и Opus; обе модели проверены через Pi.
-- 2026-10-25: подтверждён Jev; исправлено различие ID карточки `pg/jev-latest` и рабочего AnyModel API ID `jev/jev-latest`.
-- 2026-10-25: добавлен classifier `typesafe-system-one` с ценой `$0.05/1M`, коэффициентом `×1` и context `32K`.
-
-Источник формата конфигурации: локальная документация Pi 1.0.4, `docs/models.md` и `docs/custom-provider.md`.
-
-Серверную конфигурацию Hermes этот файл не меняет.
-
-## Git
-
-Pi-Test-TaskManager уже содержит первый коммит:
-
-```text
-05ae6e5 feat: establish Pi TaskManager pilot
-```
-
-После изменения конфигурации Jev нужно сделать отдельный коммит.
+- Не делать push, PR или merge.
+- Не считать provider в конфигурации доказательством работоспособности.
+- Не считать свободный текст модели канонической памятью.
+- Не применять операции Jev над `CANONICAL`/`DECISIONS` без policy и provenance.
+- Не смешивать Router и Verifier.
+- Не передавать чувствительные фрагменты внешней модели без policy.
 
 ## References
 
 - Pi config: `%USERPROFILE%\.pi\agent\models.json`
-- Pi docs: `%APPDATA%\npm\node_modules\@earendil-works\pi-coding-agent\docs\models.md`
+- Архитектура: `C:\Users\ThinkPad\Downloads\Pi-Dev-Construct.md`
+- План: `C:\Users\ThinkPad\Downloads\Pi-Test-TaskManager\PLAN.md`
+- Jev пояснение: `C:\Users\ThinkPad\Downloads\JevArchitecture.txt`
 - AnyModel endpoint: `https://anymodel.org/v1`
 - Provider-facing Jev ID: `pg/jev-latest`
 - Working AnyModel System One ID: `jev/jev-latest`
+
+Секреты и ключи в этот документ не записываются.

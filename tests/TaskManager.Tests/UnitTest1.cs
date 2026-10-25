@@ -107,6 +107,23 @@ public sealed class TaskItemTests
     }
 
     [Fact]
+    public void Query_CombinesTitleSearchWithPriorityFilter()
+    {
+        var matching = new TaskItem("Prepare release notes");
+        matching.ChangePriority(TaskPriority.High);
+
+        var sameTitleWithDifferentPriority = new TaskItem("Prepare release checklist");
+        var differentTitleWithMatchingPriority = new TaskItem("Review release notes");
+        differentTitleWithMatchingPriority.ChangePriority(TaskPriority.High);
+        var tasks = new[] { matching, sameTitleWithDifferentPriority, differentTitleWithMatchingPriority };
+
+        var result = TaskQuery.Filter(tasks, "Prepare release", priority: TaskPriority.High);
+
+        Assert.Single(result);
+        Assert.Same(matching, result.Single());
+    }
+
+    [Fact]
     public void Query_WithEmptyTitleAndNoFilters_ReturnsAllTasks()
     {
         var tasks = new[] { new TaskItem("First"), new TaskItem("Second") };
