@@ -10,9 +10,10 @@
 - Проверка: `dotnet build TaskManager.sln` — успешно, 0 ошибок, 0 предупреждений.
 - Проверка: `dotnet test TaskManager.sln` — 10 тестов пройдено, 0 ошибок.
 - Проверка: smoke-сценарий `add → search → list → quit` ранее завершён успешно.
-- Текущий срез этапа 6: базовый контракт контекста и evidence создан и локально валидирован; отдельные проверки Context Manager, Router и Verifier ещё не выполнены.
+- Этап 6 завершён: контракт контекста/evidence создан, усилен позитивными и негативными проверками, проревьюен Opus и проверен отдельным Jev Verifier-прогоном.
 - Архитектурная корректировка: Jev рассматривается как typed Context Manager, а также два отдельных контракта — `Router` до запуска модели и `Verifier` после сбора evidence. Jev предлагает операции над логическим контекстом, Pi проверяет и применяет их. Полнота поиска остаётся ответственностью Pi, а не Jev.
-- Добавлены `.pi/work/CONTEXT-MANIFEST.json`, `.pi/work/OBSERVATIONS.jsonl`, `.pi/work/ROUTING.jsonl` и `scripts/validate-context-contract.mjs`; проверены 4 фрагмента, 6 observations, provenance/status и ссылки evidence.
-- `VERDICT.json` после этого среза имеет `INSUFFICIENT_EVIDENCE`: build/test/diff/smoke ссылки существуют, но нет свежего независимого Opus review и свежего Jev Verifier call именно для нового контракта.
-- Текущий prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; он не доказывает качество маршрутизации, полноту контекста или калибровку probability.
+- Добавлены `.pi/work/CONTEXT-MANIFEST.json`, `.pi/work/OBSERVATIONS.jsonl`, `.pi/work/ROUTING.jsonl`, `.pi/work/REVIEW.md`, `.pi/extensions/jev-verifier.ts` и `scripts/validate-context-contract.test.mjs`; проверены 4 фрагмента, 7 observations, provenance/status, relations и evidence policy.
+- `VERDICT.json` после финального прогона имеет `INSUFFICIENT_EVIDENCE`, `missingEvidence=[]`, `jevApproved=false`: Jev не подтвердил APPROVE несмотря на полный набор evidence. Это сохранено как фактический результат, а не заменено вручную.
+- Финальный набор evidence: build 0/0, test 10/10, diff check, smoke add/search/list/quit, независимое read-only Opus review и два запуска Jev Verifier.
+- Prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; новый Verifier дополнительно доказал чтение evidence и запись typed verdict, но не дал APPROVE.
 - Push, PR и merge не делать автоматически; локальные проверенные микрошаги фиксировать отдельными коммитами.

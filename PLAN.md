@@ -112,7 +112,7 @@ Jev → classifier через codemode, typed VERDICT.json, stopReason=stop
 
 Проверка этапа: `dotnet build` — 0 ошибок/0 предупреждений; `dotnet test` — 10/10.
 
-### 6. Контракт контекста, операций Jev и evidence — частично выполнен
+### 6. Контракт контекста, операций Jev и evidence — завершён
 
 До автоматизации маршрутизации описать минимальный, проверяемый контракт.
 Jev не хранит память сам и не получает право молча переписывать канонические
@@ -168,9 +168,16 @@ status, freshness, sensitivity, targetModels, relatedFragments
 - проверены provenance/status у фрагментов, запрет observation → canonical,
   чувствительные фрагменты для external-модели и ссылки verdict на существующие
   observations;
-- валидатор подтвердил 4 фрагмента и 6 observations;
-- `VERDICT.json` честно имеет `INSUFFICIENT_EVIDENCE`: свежие ревью Opus и вызов
-  Jev Verifier для нового контракта ещё не выполнены.
+- валидатор подтвердил 4 фрагмента и 7 observations;
+- добавлены позитивные и негативные проверки: битая связь фрагментов и неполный
+  `APPROVE` отклоняются;
+- выполнен отдельный read-only review Opus через Pi, результат сохранён в
+  `.pi/work/REVIEW.md`;
+- добавлен и реально запущен `.pi/extensions/jev-verifier.ts`: он читает только
+  verified observations, вызывает Jev и сохраняет typed `VERDICT.json`;
+- финальный Jev-прогон увидел полный набор evidence, но дважды вернул
+  `jevApproved=false`, поэтому verdict честно остался `INSUFFICIENT_EVIDENCE`;
+- завершение этапа не означает автоматический `APPROVE`.
 
 ### 7. Jev Context Manager — typed-управление контекстом
 
@@ -325,9 +332,9 @@ evidence, а ревьюер может найти отклонение от тр
 есть рабочие файлы `.pi/work`, доменная модель, JSON-хранилище, консольный
 сценарий, зелёные build/test и проверенный базовый вызов Jev classifier через
 Pi codemode. Контракт manifest/evidence и локальный валидатор уже реализованы;
-контекстный Router, Context Manager policy и свежий evidence-based Verifier
-прогон ещё не реализованы.
+контекстный Router и Context Manager policy ещё не реализованы; evidence-based
+Verifier реализован и проверен отдельным прогоном.
 
-Следующий архитектурный шаг — этап 6: контракт контекста и evidence. Полный MVP
-Pi ещё не завершён; текущие артефакты доказывают структуру и локальную валидацию
-контракта, но не качество маршрутизации.
+Следующий архитектурный шаг — этап 7: Jev Context Manager. Полный MVP Pi ещё не
+завершён; текущие артефакты доказывают контракт, policy-проверки, независимое
+ревью и сохранение evidence-based verdict, но не качество Router/Context Manager.

@@ -1,24 +1,22 @@
 {
   "schemaVersion": 1,
   "decision": "INSUFFICIENT_EVIDENCE",
-  "confidence": 0.74,
+  "confidence": 0.36,
   "evidenceRefs": [
     "build-001",
     "test-001",
-    "diff-001",
-    "review-001",
-    "smoke-001",
-    "probe-jev-001"
+    "diff-002",
+    "review-002",
+    "smoke-002",
+    "jev-verify-001"
   ],
-  "missingEvidence": [
-    "independent Opus review of the new stage-6 contract artifacts",
-    "fresh Jev Verifier call using this evidence set"
-  ],
+  "missingEvidence": [],
   "stopReason": "stop",
   "source": {
     "provider": "anymodel",
     "model": "jev/jev-latest",
     "api": "typesafe-system-one",
-    "priorProbe": "The prior typed Jev probe is retained as probe-jev-001; its probability does not prove this verdict."
+    "verifier": "jev-verify",
+    "jevApproved": false
   }
 }
