@@ -223,8 +223,8 @@ conflict и восстановление после незавершённой �
 
 ### 8. Jev Router — typed-маршрутизация контекста
 
-Реализовать отдельный вызов Jev до запуска исполнителя. Это не финальный
-verdict, а policy-решение по кандидатам контекста.
+Завершено: реализован отдельный typed-вызов Jev до запуска исполнителя. Это не
+финальный verdict, а policy-решение по кандидатам контекста.
 
 Поток:
 
@@ -259,11 +259,19 @@ BLOCKED
 
 Проверка:
 
-- один сценарий с обязательным ограничением для Luna;
-- один сценарий с отдельным контекстом для Opus;
-- один сценарий с конфликтующими решениями;
-- один сценарий с чувствительным фрагментом;
-- routing log позволяет восстановить фактический контекст модели.
+- сценарий `READY` с обязательным fragment для Luna;
+- отдельный manifest для Opus;
+- `CONFLICT` и `MISSING_REQUIRED_CONTEXT`;
+- блокировка sensitive fragment без явной policy;
+- блокировка по лимиту фрагментов;
+- отклонение неизвестного кандидата и невалидного typed-решения;
+- routing log восстанавливает кандидатов, решение, включённые и исключённые
+  фрагменты.
+
+Артефакты: `scripts/context-router.mjs` и `scripts/context-router.test.mjs`.
+Router сохраняет role-specific manifest как `CONTEXT-MANIFEST.<role>.json` и
+не изменяет базовый `CONTEXT-MANIFEST.json`. Его journal-записи имеют `type=ROUTER`
+и проверяются общим context validator.
 
 ### 9. Jev Verifier — typed-финальное решение
 
@@ -359,12 +367,10 @@ evidence, а ревьюер может найти отклонение от тр
 Проект достиг состояния для ручной проверки базового workflow Pi:
 есть рабочие файлы `.pi/work`, доменная модель, JSON-хранилище, консольный
 сценарий, зелёные build/test и проверенный базовый вызов Jev classifier через
-Pi codemode. Контракт manifest/evidence, evidence-based Verifier и Context Manager
-policy уже реализованы и проверены. Context Manager применяет typed-операции,
-обновляет физический manifest, ведёт routing journal и сохраняет историю версий.
-Контекстный Router пока не реализован и относится к этапу 8.
+Pi codemode. Контракт manifest/evidence, evidence-based Verifier, Context Manager
+policy и Jev Router уже реализованы и проверены. Context Manager применяет
+typed-операции, а Router собирает role-specific manifest из переданных кандидатов
+и сохраняет typed-решение в routing journal.
 
-Этап 7 завершён. Полный MVP Pi ещё не завершён: текущие артефакты доказывают
-контракт, policy-проверки, Context Manager, независимое ревью и сохранение
-evidence-based verdict, но Router, полный сквозной прогон и автоматизация
-остаются этапами 8–11.
+Этапы 7–8 завершены. Полный MVP Pi ещё не завершён: отдельное усиление Verifier,
+полный сквозной прогон и автоматизация остаются этапами 9–11.

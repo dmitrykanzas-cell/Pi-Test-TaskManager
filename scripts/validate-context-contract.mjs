@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const workDir = resolve(process.argv[2] ?? ".pi/work");
@@ -79,6 +79,13 @@ const observationEntries = await loadJsonLines(observationsPath);
 const routingEntries = await loadJsonLines(routingPath);
 const observations = new Map();
 
+let routedManifestFiles = [];
+try {
+  routedManifestFiles = (await readdir(workDir)).filter((name) => /^CONTEXT-MANIFEST\..+\.json$/.test(name));
+} catch {
+  routedManifestFiles = [];
+}
+
 for (const { value, number } of observationEntries) {
   validateTypedRecord(value, requiredObservationFields, observationsPath, number, ["targetModels", "relatedFragments"]);
   if (!nonEmptyString(value.id) || observations.has(value.id)) {
@@ -93,6 +100,10 @@ const validManifestIds = new Set([
   ...(nonEmptyString(manifest?.manifestId) ? [manifest.manifestId] : []),
   ...(Array.isArray(manifest?.manifestHistory) ? manifest.manifestHistory : []),
 ]);
+for (const file of routedManifestFiles) {
+  const routedManifest = await loadJson(resolve(workDir, file));
+  if (nonEmptyString(routedManifest?.manifestId)) validManifestIds.add(routedManifest.manifestId);
+}
 if (manifest) {
   if (manifest.schemaVersion !== 1) errors.push(`${manifestPath}: schemaVersion must be 1`);
   if (!nonEmptyString(manifest.manifestId)) errors.push(`${manifestPath}: manifestId must be a non-empty string`);
@@ -139,7 +150,18 @@ for (const { value, number } of routingEntries) {
     errors.push(`${path}: timestamp, manifestId and role must be non-empty strings`);
   }
   if (!validManifestIds.has(value.manifestId)) errors.push(`${path}: manifestId does not match current or historical manifest`);
-  if (value.operation !== undefined) {
+  if (value.type === "ROUTER") {
+    const allowedRouterStates = new Set(["READY", "CONFLICT", "MISSING_REQUIRED_CONTEXT", "INSUFFICIENT_EVIDENCE", "BLOCKED"]);
+    if (!allowedRouterStates.has(value.state)) errors.push(`${path}: unsupported router state ${value.state}`);
+    for (const field of ["candidates", "included", "excluded", "missingRequired"]) {
+      if (!hasStringArray(value[field])) errors.push(`${path}: router ${field} must be an array of non-empty strings`);
+    }
+    if (!Array.isArray(value.conflicts)) errors.push(`${path}: router conflicts must be an array`);
+    if (!nonEmptyString(value.reason)) errors.push(`${path}: router reason must be a non-empty string`);
+    for (const id of [...(value.candidates ?? []), ...(value.included ?? []), ...(value.excluded ?? []), ...(value.missingRequired ?? [])]) {
+      if (!fragmentIds.has(id)) errors.push(`${path}: router references missing fragment ${id}`);
+    }
+  } else if (value.operation !== undefined) {
     if (!routingOperations.has(value.operation)) errors.push(`${path}: unsupported operation ${value.operation}`);
     if (!nonEmptyString(value.fragmentId)) errors.push(`${path}: operation requires fragmentId`);
     if (!nonEmptyString(value.result)) errors.push(`${path}: operation requires result`);

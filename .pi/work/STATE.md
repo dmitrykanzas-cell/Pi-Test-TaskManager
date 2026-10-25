@@ -1,6 +1,6 @@
 # Состояние
 
-- Текущий этап: этап 7 Context Manager завершён; следующий этап — 8 Jev Router.
+- Текущий этап: этап 8 Jev Router завершён; следующий этап — 9 Jev Verifier.
 - Решение: тестовый проект — локальный консольный TaskManager на C#.
 - Выполнено: solution, рабочие файлы Pi, TaskItem, статусы, приоритеты, JSON-хранилище, поиск/фильтрация и минимальный консольный сценарий.
 - Luna через Pi добавила тест `Query_CombinesTitleSearchWithPriorityFilter`; production-код не изменялся.
@@ -15,7 +15,8 @@
 - Добавлены `.pi/work/CONTEXT-MANIFEST.json`, `.pi/work/OBSERVATIONS.jsonl`, `.pi/work/ROUTING.jsonl`, `.pi/work/REVIEW.md`, `.pi/extensions/jev-verifier.ts` и `scripts/validate-context-contract.test.mjs`; проверены 4 фрагмента, 7 observations, provenance/status, relations и evidence policy.
 - `VERDICT.json` после финального прогона имеет `INSUFFICIENT_EVIDENCE`, `missingEvidence=[]`, `jevApproved=false`: Jev не подтвердил APPROVE несмотря на полный набор evidence. Это сохранено как фактический результат, а не заменено вручную.
 - Этап 7 завершён: `scripts/context-manager.mjs` применяет typed-операции через policy, обновляет manifest/routing через transaction marker и временные файлы с fail-closed recovery, сохраняет историю версий; сценарии этапа проверены end-to-end на копии `.pi/work`.
+- Этап 8 завершён: `scripts/context-router.mjs` принимает Pi-кандидатов и typed-решение Jev, формирует role-specific manifest для Luna/Opus, применяет проверки required/sensitive/limit/conflict и сохраняет `type=ROUTER` в `ROUTING.jsonl`; сценарии Router и файловая интеграция проверены.
 - Финальный набор evidence: build 0/0, test 10/10, diff check, smoke add/search/list/quit, независимое read-only Opus review и два запуска Jev Verifier.
 - Prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; новый Verifier дополнительно доказал чтение evidence и запись typed verdict, но не дал APPROVE.
-- Этапы 8–11 ещё не выполнены: Router, полный сквозной контекстный прогон и автоматизация модулей Pi остаются следующими этапами.
+- Этапы 9–11 ещё не выполнены полностью: требуется отдельное усиление Verifier, затем полный сквозной контекстный прогон и автоматизация модулей Pi.
 - Push, PR и merge не делать автоматически; локальные проверенные микрошаги фиксировать отдельными коммитами.
