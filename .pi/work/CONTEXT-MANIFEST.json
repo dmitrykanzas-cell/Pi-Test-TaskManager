@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "manifestId": "stage-6-contract-001",
+  "role": "luna",
+  "status": "READY",
+  "createdAt": "2026-10-25T12:00:00Z",
+  "fragments": [
+    {
+      "id": "goal-001",
+      "kind": "CANONICAL",
+      "text": "Проверить контракт контекста и evidence на тестовом проекте.",
+      "source": ".pi/work/GOAL.md",
+      "sourceVersion": "working-tree",
+      "authority": "user",
+      "status": "active",
+      "freshness": "current",
+      "sensitivity": "public",
+      "targetModels": ["luna", "opus"],
+      "relatedFragments": ["decision-001"]
+    },
+    {
+      "id": "decision-001",
+      "kind": "DECISIONS",
+      "text": "Pi хранит физический контекст, Jev предлагает typed-операции, а Pi применяет policy.",
+      "source": ".pi/work/DECISIONS.md",
+      "sourceVersion": "working-tree",
+      "authority": "user",
+      "status": "active",
+      "freshness": "current",
+      "sensitivity": "public",
+      "targetModels": ["luna", "opus", "jev"],
+      "relatedFragments": ["goal-001"]
+    },
+    {
+      "id": "observation-001",
+      "kind": "OBSERVATIONS",
+      "text": "dotnet build TaskManager.sln завершён с 0 ошибками и 0 предупреждений.",
+      "source": ".pi/work/OBSERVATIONS.jsonl#build-001",
+      "sourceVersion": "working-tree",
+      "authority": "tool",
+      "status": "active",
+      "freshness": "current",
+      "sensitivity": "public",
+      "targetModels": ["luna", "opus", "jev"],
+      "relatedFragments": []
+    },
+    {
+      "id": "hypothesis-001",
+      "kind": "HYPOTHESES",
+      "text": "Контракт можно расширить до Router после проверки базовых инвариантов.",
+      "source": ".pi/work/STATE.md",
+      "sourceVersion": "working-tree",
+      "authority": "model",
+      "status": "active",
+      "freshness": "current",
+      "sensitivity": "public",
+      "targetModels": ["luna", "opus"],
+      "relatedFragments": ["observation-001"]
+    }
+  ]
+}
