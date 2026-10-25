@@ -11,7 +11,7 @@ type Observation = {
 
 type Verdict = {
   schemaVersion: 1;
-  decision: "APPROVE" | "INSUFFICIENT_EVIDENCE";
+  decision: "APPROVE" | "REQUEST_CHANGES" | "BLOCKED" | "INSUFFICIENT_EVIDENCE";
   confidence: number;
   evidenceRefs: string[];
   missingEvidence: string[];
@@ -68,10 +68,10 @@ export default function (pi: ExtensionAPI) {
         questions: {
           approved: {
             type: "bool",
-            instructions: "Is the evidence sufficient to approve stage 6?",
+            instructions: "Which typed final decision follows from the evidence for stage 9? Return true only for APPROVE; false means the policy layer must keep the result non-approving.",
             criteria: {
-              true: "All mandatory evidence is present and verified",
-              false: "At least one mandatory evidence item is absent or unverified",
+              true: "All mandatory evidence is present and verified; policy may produce APPROVE",
+              false: "Evidence is missing/unverified or the policy must produce REQUEST_CHANGES, BLOCKED, or INSUFFICIENT_EVIDENCE",
             },
           },
         },

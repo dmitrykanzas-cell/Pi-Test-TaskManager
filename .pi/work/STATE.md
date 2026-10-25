@@ -1,6 +1,6 @@
 # Состояние
 
-- Текущий этап: этап 8 Jev Router завершён; следующий этап — 9 Jev Verifier.
+- Текущий этап: этап 9 Jev Verifier завершён; следующий этап — 10 сквозной контекстный прогон.
 - Решение: тестовый проект — локальный консольный TaskManager на C#.
 - Выполнено: solution, рабочие файлы Pi, TaskItem, статусы, приоритеты, JSON-хранилище, поиск/фильтрация и минимальный консольный сценарий.
 - Luna через Pi добавила тест `Query_CombinesTitleSearchWithPriorityFilter`; production-код не изменялся.
@@ -18,5 +18,6 @@
 - Этап 8 завершён: `scripts/context-router.mjs` принимает Pi-кандидатов и typed-решение Jev, формирует role-specific manifest для Luna/Opus, применяет проверки required/sensitive/limit/conflict и сохраняет `type=ROUTER` в `ROUTING.jsonl`; сценарии Router и файловая интеграция проверены.
 - Финальный набор evidence: build 0/0, test 10/10, diff check, smoke add/search/list/quit, независимое read-only Opus review и два запуска Jev Verifier.
 - Prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; новый Verifier дополнительно доказал чтение evidence и запись typed verdict, но не дал APPROVE.
-- Этапы 9–11 ещё не выполнены полностью: требуется отдельное усиление Verifier, затем полный сквозной контекстный прогон и автоматизация модулей Pi.
+- Этап 9 завершён: `scripts/jev-verifier.mjs` разделяет typed decision и evidence policy, поддерживает APPROVE/REQUEST_CHANGES/BLOCKED/INSUFFICIENT_EVIDENCE, блокирует конфликт, provider error, отсутствующие/неподтверждённые evidence и не считает probability доказательством; сценарии и файловая интеграция проверены. Внешний `.pi/work/VERDICT.json` сохранён как фактический INSUFFICIENT_EVIDENCE, локальный APPROVE-тест не выдаётся за внешний Jev verdict.
+- Этапы 10–11 ещё не выполнены: требуется полный сквозной контекстный прогон и автоматизация модулей Pi.
 - Push, PR и merge не делать автоматически; локальные проверенные микрошаги фиксировать отдельными коммитами.

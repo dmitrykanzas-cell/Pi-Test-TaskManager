@@ -300,8 +300,17 @@ INSUFFICIENT_EVIDENCE
 
 - Jev получает evidenceRefs, а не только строку `Opus: APPROVE`;
 - отсутствующий build/test даёт `INSUFFICIENT_EVIDENCE`;
-- конфликт требований даёт `CONFLICT`/`BLOCKED`, а не молчаливый выбор;
+- конфликт требований даёт `BLOCKED`, а не молчаливый выбор;
+- поддерживаются `APPROVE`, `REQUEST_CHANGES`, `BLOCKED`, `INSUFFICIENT_EVIDENCE`;
+- ошибка или незавершённый ответ Jev даёт `BLOCKED`;
+- неизвестное решение и дублирующиеся/пустые evidenceRefs отклоняются;
 - probability не трактуется как доказательство и сохраняется отдельно от решения.
+
+Реализация: `scripts/jev-verifier.mjs`, тесты: `scripts/jev-verifier.test.mjs`.
+Policy verifier принимает только typed Jev decision и evidenceRefs, проверяет существование,
+`status=verified`, обязательные виды evidence и конфликт; затем сохраняет typed verdict.
+Фактический текущий `.pi/work/VERDICT.json` остаётся `INSUFFICIENT_EVIDENCE`, если внешний Jev
+не подтвердил approval. Тестовый `APPROVE` доказывает только локальный policy contract, не внешний вызов.
 
 ### 10. Сквозной контекстный прогон
 

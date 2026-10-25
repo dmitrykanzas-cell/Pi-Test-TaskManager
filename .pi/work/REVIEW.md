@@ -1,5 +1,8 @@
 # Stage 6 independent review
 
+> Note: this file records the historical Stage 6 review. Stage 9 Verifier policy is implemented and documented in PLAN.md/STATE.md and in `scripts/jev-verifier.mjs`.
+
+
 Дата: 2026-10-25
 Ревьюер: Opus через Pi, read-only invocation
 Область: контракт контекста/evidence, валидатор и Jev Verifier
