@@ -14,11 +14,15 @@ const manifest = JSON.parse(await readFile(resolve(work, "CONTEXT-MANIFEST.json"
 const routingLines = (await readFile(resolve(work, "ROUTING.jsonl"), "utf8"))
   .split(/\r?\n/).filter((line) => line.trim());
 
+const baseManifestId = manifest.manifestId;
+const nextManifestId = (operationId) => `${baseManifestId.split("-cm-")[0]}-cm-${operationId}`;
 const baseOperations = [
   {
     operationId: "add-observation-001",
     operation: "ADD",
     role: "luna",
+    baseManifestId,
+
     reason: "record a new verified observation",
     fragment: {
       id: "observation-stage7-001",
@@ -38,6 +42,7 @@ const baseOperations = [
     operationId: "update-hypothesis-001",
     operation: "UPDATE",
     role: "luna",
+    baseManifestId,
     fragmentId: "hypothesis-001",
     reason: "refresh hypothesis after the scenario",
     patch: { text: "Context Manager can apply typed operations after policy approval.", freshness: "current" },
@@ -46,6 +51,7 @@ const baseOperations = [
     operationId: "obsolete-canonical-001",
     operation: "OBSOLETE",
     role: "luna",
+    baseManifestId,
     fragmentId: "goal-001",
     reason: "the stage-6 goal is superseded by stage 7",
   },
@@ -53,13 +59,28 @@ const baseOperations = [
     operationId: "add-transient-001",
     operation: "ADD",
     role: "luna",
+    baseManifestId,
+
     reason: "create temporary routing context",
-    fragment: { id: "transient-stage7-001", kind: "TRANSIENT", text: "temporary context" },
+    fragment: {
+      id: "transient-stage7-001",
+      kind: "TRANSIENT",
+      text: "temporary context",
+      source: ".pi/work/context-manager.test",
+      sourceVersion: "stage-7-test",
+      authority: "tool",
+      status: "active",
+      freshness: "current",
+      sensitivity: "public",
+      targetModels: ["luna"],
+      relatedFragments: [],
+    },
   },
   {
     operationId: "remove-transient-001",
     operation: "REMOVE",
     role: "luna",
+    baseManifestId,
     fragmentId: "transient-stage7-001",
     reason: "temporary context is no longer needed",
   },
@@ -67,6 +88,7 @@ const baseOperations = [
     operationId: "conflict-001",
     operation: "CONFLICT",
     role: "luna",
+    baseManifestId,
     fragmentId: "observation-stage7-001",
     conflictWith: "hypothesis-001",
     reason: "observation and hypothesis require explicit reconciliation",
@@ -76,7 +98,8 @@ const baseOperations = [
 const applied = await applyOperations({ manifest, routingLines, operations: baseOperations, now: "2026-10-25T15:00:00Z" });
 const byId = new Map(applied.manifest.fragments.map((fragment) => [fragment.id, fragment]));
 assert.equal(byId.get("observation-stage7-001").status, "conflict");
-assert.equal(byId.get("observation-stage7-001").conflictWith, "hypothesis-001");
+assert.deepEqual(byId.get("observation-stage7-001").conflictWith, ["hypothesis-001"]);
+assert.deepEqual(byId.get("hypothesis-001").conflictWith, ["observation-stage7-001"]);
 assert.equal(byId.get("hypothesis-001").text, "Context Manager can apply typed operations after policy approval.");
 assert.equal(byId.get("goal-001").status, "obsolete");
 assert.equal(byId.has("transient-stage7-001"), false);
@@ -87,6 +110,7 @@ const rejectedCanonical = await applyOperations({ manifest, routingLines, operat
   operationId: "reject-canonical-update-001",
   operation: "UPDATE",
   role: "luna",
+  baseManifestId,
   fragmentId: "goal-001",
   reason: "attempt to mutate canonical fact",
   patch: { text: "must not apply" },
@@ -100,6 +124,7 @@ const rejectedTransient = await applyOperations({ manifest, routingLines, operat
   operationId: "reject-transient-remove-001",
   operation: "REMOVE",
   role: "luna",
+  baseManifestId,
   fragmentId: "hypothesis-001",
   reason: "attempt to remove non-transient",
 }] });
@@ -111,11 +136,44 @@ const rejectedMissing = await applyOperations({ manifest, routingLines, operatio
   operationId: "reject-missing-fragment-001",
   operation: "OBSOLETE",
   role: "luna",
+  baseManifestId,
   fragmentId: "missing-fragment",
   reason: "attempt to operate on an unknown fragment",
 }] });
 assert.equal(rejectedMissing.results[0].result, "REJECTED");
 assert.equal(rejectedMissing.results[0].errorCode, "POLICY_REJECTED");
+
+const rejectedImmutable = await applyOperations({ manifest, routingLines, operations: [{
+  operationId: "reject-immutable-update-001",
+  operation: "UPDATE",
+  role: "luna",
+  baseManifestId,
+  fragmentId: "hypothesis-001",
+  reason: "attempt to rewrite provenance",
+  patch: { source: "forged-source" },
+}] });
+assert.equal(rejectedImmutable.results[0].errorCode, "POLICY_REJECTED");
+
+const rejectedStale = await applyOperations({ manifest, routingLines, operations: [{
+  operationId: "reject-stale-001",
+  operation: "UPDATE",
+  role: "luna",
+  baseManifestId: "stale-manifest",
+  fragmentId: "hypothesis-001",
+  reason: "stale operation",
+  patch: { text: "must not apply" },
+}] });
+assert.equal(rejectedStale.results[0].errorCode, "STALE_MANIFEST");
+
+const rejectedIncompleteAdd = await applyOperations({ manifest, routingLines, operations: [{
+  operationId: "reject-incomplete-add-001",
+  operation: "ADD",
+  role: "luna",
+  baseManifestId,
+  reason: "incomplete typed fragment",
+  fragment: { id: "incomplete", kind: "OBSERVATIONS", text: "missing contract fields" },
+}] });
+assert.equal(rejectedIncompleteAdd.results[0].errorCode, "POLICY_REJECTED");
 
 const temp = await mkdtemp(resolve(root, ".context-manager-test-"));
 try {

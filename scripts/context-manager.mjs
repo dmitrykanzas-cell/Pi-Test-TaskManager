@@ -1,4 +1,4 @@
-import { readFile, writeFile, rename, mkdtemp, rm } from "node:fs/promises";
+import { readFile, writeFile, rename, mkdtemp, mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -10,6 +10,8 @@ const routingPath = resolve(workDir, "ROUTING.jsonl");
 const allowedOperations = new Set(["ADD", "UPDATE", "OBSOLETE", "REMOVE", "RETAIN", "CONFLICT"]);
 const canonicalKinds = new Set(["CANONICAL", "DECISIONS"]);
 const mutableKinds = new Set(["OBSERVATIONS", "HYPOTHESES", "TASK_STATE", "TRANSIENT"]);
+const fragmentFields = ["id", "kind", "text", "source", "sourceVersion", "authority", "status", "freshness", "sensitivity", "targetModels", "relatedFragments"];
+const immutableUpdateFields = new Set(["id", "kind", "source", "sourceVersion", "authority", "sensitivity", "targetModels"]);
 
 function nonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -36,6 +38,12 @@ function validateOperation(operation) {
   if (!nonEmptyString(operation.role)) {
     throw makeError("INVALID_OPERATION", "role must be a non-empty string", operation);
   }
+  if (!nonEmptyString(operation.operationId)) {
+    throw makeError("INVALID_OPERATION", "operationId must be a non-empty string", operation);
+  }
+  if (!nonEmptyString(operation.baseManifestId)) {
+    throw makeError("INVALID_OPERATION", "baseManifestId must be a non-empty string", operation);
+  }
   if (!nonEmptyString(operation.reason)) {
     throw makeError("INVALID_OPERATION", "reason must be a non-empty string", operation);
   }
@@ -55,6 +63,13 @@ function policyCheck(operation, fragments) {
   const fragment = fragments.get(operation.fragmentId);
   if (operation.operation === "ADD") {
     const candidate = operation.fragment;
+    for (const field of fragmentFields) {
+      if (field === "targetModels" || field === "relatedFragments") {
+        if (!Array.isArray(candidate[field])) throw makeError("POLICY_REJECTED", `ADD fragment requires array ${field}`, operation);
+      } else if (!nonEmptyString(candidate[field])) {
+        throw makeError("POLICY_REJECTED", `ADD fragment requires non-empty ${field}`, operation);
+      }
+    }
     if (!nonEmptyString(candidate.id) || !nonEmptyString(candidate.kind) || !nonEmptyString(candidate.text)) {
       throw makeError("POLICY_REJECTED", "ADD fragment requires non-empty id, kind and text", operation);
     }
@@ -84,19 +99,11 @@ function applyOperation(manifest, operation) {
   next.manifestHistory = [...new Set([...(manifest.manifestHistory ?? []), manifest.manifestId])];
   next.fragmentHistory = [...new Set(manifest.fragmentHistory ?? [])];
   const fragments = new Map(next.fragments.map((fragment) => [fragment.id, fragment]));
-  const policy = policyCheck(operation, fragments);
+  const policy = policyCheck({ ...operation, currentManifestId: manifest.manifestId }, fragments);
   let changedFragmentId = operation.fragmentId;
 
   if (operation.operation === "ADD") {
     const fragment = clone(operation.fragment);
-    fragment.status ??= "active";
-    fragment.freshness ??= "current";
-    fragment.sensitivity ??= "public";
-    fragment.targetModels ??= [];
-    fragment.relatedFragments ??= [];
-    fragment.sourceVersion ??= `context-manager:${operation.operationId ?? randomUUID()}`;
-    fragment.source ??= ".pi/work/context-manager";
-    fragment.authority ??= "tool";
     next.fragments.push(fragment);
     changedFragmentId = fragment.id;
   } else if (operation.operation === "UPDATE") {
@@ -104,7 +111,10 @@ function applyOperation(manifest, operation) {
     if (!operation.patch || typeof operation.patch !== "object" || Array.isArray(operation.patch)) {
       throw makeError("INVALID_OPERATION", "UPDATE requires patch object", operation);
     }
-    Object.assign(fragment, clone(operation.patch), { id: fragment.id, kind: fragment.kind });
+    for (const field of Object.keys(operation.patch)) {
+      if (immutableUpdateFields.has(field)) throw makeError("POLICY_REJECTED", `UPDATE cannot change ${field}`, operation);
+    }
+    Object.assign(fragment, clone(operation.patch));
   } else if (operation.operation === "OBSOLETE") {
     fragments.get(operation.fragmentId).status = "obsolete";
     fragments.get(operation.fragmentId).freshness = "stale";
@@ -113,11 +123,16 @@ function applyOperation(manifest, operation) {
     next.fragments = next.fragments.filter((fragment) => fragment.id !== operation.fragmentId);
   } else if (operation.operation === "CONFLICT") {
     const fragment = fragments.get(operation.fragmentId);
-    fragment.status = "conflict";
-    fragment.conflictWith = operation.conflictWith;
+    const conflictIds = [operation.fragmentId, operation.conflictWith];
+    for (const id of conflictIds) {
+      const conflictFragment = fragments.get(id);
+      conflictFragment.status = "conflict";
+      conflictFragment.conflictWith = conflictIds.filter((other) => other !== id);
+      conflictFragment.conflictOperationId = operation.operationId;
+    }
   }
 
-  next.manifestId = `${manifest.manifestId.split("-cm-")[0]}-cm-${Date.now()}`;
+  next.manifestId = `${manifest.manifestId.split("-cm-")[0]}-cm-${operation.operationId}`;
   next.createdAt = new Date().toISOString();
   next.status = "READY";
   return { manifest: next, policy, changedFragmentId };
@@ -129,13 +144,29 @@ async function atomicWrite(path, content, tempDir) {
   await rename(tempPath, path);
 }
 
+async function recoverTransaction(targetDir) {
+  const transactionDir = resolve(targetDir, ".context-manager-transaction");
+  try {
+    const marker = JSON.parse(await readFile(resolve(transactionDir, "TRANSACTION.json"), "utf8"));
+    throw new Error(`unfinished context transaction ${marker.manifestId}; refusing partial state`);
+  } catch (error) {
+    if (error.code === "ENOENT") return;
+    throw error;
+  }
+}
+
 export async function applyOperations({ manifest, routingLines, operations, now = new Date().toISOString() }) {
   let current = clone(manifest);
   const routing = [...routingLines];
   const results = [];
+  const batchBaseManifestId = current.manifestId;
   for (const operation of operations) {
-    const operationId = operation.operationId ?? randomUUID();
-    const stamped = { ...operation, operationId };
+    const stamped = { ...operation };
+    if (stamped.baseManifestId !== batchBaseManifestId) {
+      results.push({ operationId: stamped.operationId, operation: stamped.operation, result: "REJECTED", errorCode: "STALE_MANIFEST", message: "operation baseManifestId does not match batch manifest" });
+      routing.push(JSON.stringify({ timestamp: now, manifestId: current.manifestId, role: stamped.role ?? "unknown", operation: stamped.operation ?? "UNKNOWN", fragmentId: stamped.fragmentId ?? null, result: "REJECTED", reason: stamped.reason ?? "stale manifest", operationId: stamped.operationId, errorCode: "STALE_MANIFEST" }));
+      continue;
+    }
     try {
       const result = applyOperation(current, stamped);
       current = result.manifest;
@@ -147,10 +178,10 @@ export async function applyOperations({ manifest, routingLines, operations, now 
         fragmentId: result.changedFragmentId,
         result: "APPLIED",
         reason: stamped.reason,
-        operationId,
+        operationId: stamped.operationId,
         policy: result.policy.reason,
       }));
-      results.push({ operationId, operation: stamped.operation, result: "APPLIED", manifestId: current.manifestId });
+      results.push({ operationId: stamped.operationId, operation: stamped.operation, result: "APPLIED", manifestId: current.manifestId });
     } catch (error) {
       routing.push(JSON.stringify({
         timestamp: now,
@@ -160,10 +191,10 @@ export async function applyOperations({ manifest, routingLines, operations, now 
         fragmentId: stamped.fragmentId ?? null,
         result: "REJECTED",
         reason: stamped.reason ?? error.message,
-        operationId,
+        operationId: stamped.operationId,
         errorCode: error.code ?? "ERROR",
       }));
-      results.push({ operationId, operation: stamped.operation, result: "REJECTED", errorCode: error.code ?? "ERROR", message: error.message });
+      results.push({ operationId: stamped.operationId, operation: stamped.operation, result: "REJECTED", errorCode: error.code ?? "ERROR", message: error.message });
       continue;
     }
   }
@@ -171,15 +202,20 @@ export async function applyOperations({ manifest, routingLines, operations, now 
 }
 
 export async function applyToWorkDir(targetDir, operations) {
+  await recoverTransaction(targetDir);
   const targetManifestPath = resolve(targetDir, "CONTEXT-MANIFEST.json");
   const targetRoutingPath = resolve(targetDir, "ROUTING.jsonl");
   const manifest = JSON.parse(await readFile(targetManifestPath, "utf8"));
   const routingLines = (await readFile(targetRoutingPath, "utf8")).split(/\r?\n/).filter((line) => line.trim());
   const result = await applyOperations({ manifest, routingLines, operations });
-  const tempDir = await mkdtemp(resolve(targetDir, ".context-manager-"));
+  const transactionDir = resolve(targetDir, ".context-manager-transaction");
+  await mkdir(transactionDir, { recursive: true });
+  const tempDir = await mkdtemp(resolve(transactionDir, "staging-"));
   try {
+    await writeFile(resolve(transactionDir, "TRANSACTION.json"), JSON.stringify({ manifestId: result.manifest.manifestId, files: ["CONTEXT-MANIFEST.json", "ROUTING.jsonl"] }));
     await atomicWrite(targetManifestPath, `${JSON.stringify(result.manifest, null, 2)}\n`, tempDir);
     await atomicWrite(targetRoutingPath, `${result.routing.join("\n")}\n`, tempDir);
+    await rm(transactionDir, { recursive: true, force: true });
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
