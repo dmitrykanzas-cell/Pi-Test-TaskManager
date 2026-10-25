@@ -14,6 +14,7 @@
 - Архитектурная корректировка: Jev рассматривается как typed Context Manager, а также два отдельных контракта — `Router` до запуска модели и `Verifier` после сбора evidence. Jev предлагает операции над логическим контекстом, Pi проверяет и применяет их. Полнота поиска остаётся ответственностью Pi, а не Jev.
 - Добавлены `.pi/work/CONTEXT-MANIFEST.json`, `.pi/work/OBSERVATIONS.jsonl`, `.pi/work/ROUTING.jsonl`, `.pi/work/REVIEW.md`, `.pi/extensions/jev-verifier.ts` и `scripts/validate-context-contract.test.mjs`; проверены 4 фрагмента, 7 observations, provenance/status, relations и evidence policy.
 - `VERDICT.json` после финального прогона имеет `INSUFFICIENT_EVIDENCE`, `missingEvidence=[]`, `jevApproved=false`: Jev не подтвердил APPROVE несмотря на полный набор evidence. Это сохранено как фактический результат, а не заменено вручную.
+- Этап 7 завершён: `scripts/context-manager.mjs` применяет typed-операции через policy, атомарно обновляет manifest/routing и сохраняет историю версий; сценарии этапа проверены end-to-end на копии `.pi/work`.
 - Финальный набор evidence: build 0/0, test 10/10, diff check, smoke add/search/list/quit, независимое read-only Opus review и два запуска Jev Verifier.
 - Prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; новый Verifier дополнительно доказал чтение evidence и запись typed verdict, но не дал APPROVE.
 - Push, PR и merge не делать автоматически; локальные проверенные микрошаги фиксировать отдельными коммитами.

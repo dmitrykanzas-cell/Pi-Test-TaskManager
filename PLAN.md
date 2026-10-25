@@ -181,6 +181,28 @@ status, freshness, sensitivity, targetModels, relatedFragments
 
 ### 7. Jev Context Manager — typed-управление контекстом
 
+Завершено: реализован dependency-free Context Manager, принимающий typed-операции
+из JSON и выполняющий их через Pi policy check:
+
+```text
+typed operation → policy check → physical manifest → ROUTING.jsonl → new manifest
+```
+
+Реализованные операции: `ADD`, `UPDATE`, `OBSOLETE`, `REMOVE`, `CONFLICT`.
+`RETAIN` остаётся journal-level операцией без изменения фрагмента.
+
+Pi сохраняет `previousManifestId`, `manifestHistory` и `fragmentHistory`; запись
+manifest и routing выполняется через временные файлы с последующим rename.
+
+Проверены сценарии: добавить observation, обновить hypothesis, устареть canonical,
+удалить transient, отклонить изменение canonical, зарегистрировать conflict и
+отклонить неизвестный fragment. Для rejected operations сохраняется routing-запись
+с `result=REJECTED`, физический контекст не изменяется.
+
+Артефакты: `scripts/context-manager.mjs` и `scripts/context-manager.test.mjs`.
+
+Первоначальное требование:
+
 Проверить, что Jev может вернуть операции над контекстом, а Pi умеет:
 
 - проверить операцию по policy;

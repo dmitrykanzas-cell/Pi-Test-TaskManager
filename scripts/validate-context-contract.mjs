@@ -16,7 +16,7 @@ const requiredObservationFields = [
   "status", "freshness", "sensitivity", "targetModels", "relatedFragments",
 ];
 const requiredEvidenceKinds = ["build", "test", "diff", "review"];
-const routingOperations = new Set(["RETAIN", "ADD", "UPDATE", "REMOVE", "ROUTE", "CONFLICT"]);
+const routingOperations = new Set(["RETAIN", "ADD", "UPDATE", "OBSOLETE", "REMOVE", "ROUTE", "CONFLICT"]);
 const errors = [];
 
 function nonEmptyString(value) {
@@ -89,6 +89,10 @@ for (const { value, number } of observationEntries) {
 }
 
 const fragmentIds = new Set();
+const validManifestIds = new Set([
+  ...(nonEmptyString(manifest?.manifestId) ? [manifest.manifestId] : []),
+  ...(Array.isArray(manifest?.manifestHistory) ? manifest.manifestHistory : []),
+]);
 if (manifest) {
   if (manifest.schemaVersion !== 1) errors.push(`${manifestPath}: schemaVersion must be 1`);
   if (!nonEmptyString(manifest.manifestId)) errors.push(`${manifestPath}: manifestId must be a non-empty string`);
@@ -123,20 +127,27 @@ if (manifest) {
   }
 }
 
+const historicalFragmentIds = new Set(Array.isArray(manifest?.fragmentHistory) ? manifest.fragmentHistory : []);
+const routingAddedFragmentIds = new Set(
+  routingEntries
+    .filter(({ value }) => value.operation === "ADD" && nonEmptyString(value.fragmentId))
+    .map(({ value }) => value.fragmentId),
+);
 for (const { value, number } of routingEntries) {
   const path = `${routingPath}:${number}`;
   if (!nonEmptyString(value.timestamp) || !nonEmptyString(value.manifestId) || !nonEmptyString(value.role)) {
     errors.push(`${path}: timestamp, manifestId and role must be non-empty strings`);
   }
-  if (manifest && value.manifestId !== manifest.manifestId) errors.push(`${path}: manifestId does not match manifest`);
+  if (!validManifestIds.has(value.manifestId)) errors.push(`${path}: manifestId does not match current or historical manifest`);
   if (value.operation !== undefined) {
     if (!routingOperations.has(value.operation)) errors.push(`${path}: unsupported operation ${value.operation}`);
     if (!nonEmptyString(value.fragmentId)) errors.push(`${path}: operation requires fragmentId`);
     if (!nonEmptyString(value.result)) errors.push(`${path}: operation requires result`);
     if (!nonEmptyString(value.reason)) errors.push(`${path}: operation requires reason`);
-    if (nonEmptyString(value.fragmentId) && !fragmentIds.has(value.fragmentId)) {
+    const historicalFragment = historicalFragmentIds.has(value.fragmentId);
+    const removedAddedFragment = value.operation === "REMOVE" && routingAddedFragmentIds.has(value.fragmentId);
+    if (nonEmptyString(value.fragmentId) && !fragmentIds.has(value.fragmentId) && !historicalFragment && !removedAddedFragment)
       errors.push(`${path}: operation references missing fragment ${value.fragmentId}`);
-    }
   } else {
     for (const field of ["candidates", "included", "excluded"]) {
       if (!hasStringArray(value[field])) errors.push(`${path}: ${field} must be an array of non-empty strings`);
