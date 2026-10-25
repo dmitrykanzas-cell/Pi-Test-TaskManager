@@ -77,8 +77,9 @@ export default function (pi: ExtensionAPI) {
         },
       });
 
-      const jevApproved = result.stopReason === "stop"
-        ? result.answers.approved?.value ?? null
+      const approvedAnswer = result.answers.approved;
+      const jevApproved = result.stopReason === "stop" && approvedAnswer?.type === "bool"
+        ? approvedAnswer.probability >= 0.5
         : null;
       const decision = jevApproved === true && missingEvidence.length === 0
         ? "APPROVE"
