@@ -27,6 +27,12 @@
 Главный regression-case реально проверен: forged APPROVE отклонён с ошибками
 `APPROVE requires review evidence` и `APPROVE evidence must be verified`.
 
+Второе независимое ревью выявило дополнительный MEDIUM-дефект: записи операций
+в `ROUTING.jsonl` принимались без обязательного `role` из-за значения по умолчанию
+`luna`. Исправлено: `role` теперь обязателен, добавлен negative test для missing role,
+а все штатные routing operation entries дополнены `role=luna`. После исправления
+повторно прошли validator, negative tests, build и test.
+
 ## Проверенные требования
 
 - `CONTEXT-MANIFEST.json` содержит 4 фрагмента с `id`, `kind`, `text`, `source`, `sourceVersion`, `authority`, `status`, `freshness`, `sensitivity`, `targetModels`, `relatedFragments`.
