@@ -15,4 +15,4 @@
 - Добавлены `.pi/work/CONTEXT-MANIFEST.json`, `.pi/work/OBSERVATIONS.jsonl`, `.pi/work/ROUTING.jsonl` и `scripts/validate-context-contract.mjs`; проверены 4 фрагмента, 6 observations, provenance/status и ссылки evidence.
 - `VERDICT.json` после этого среза имеет `INSUFFICIENT_EVIDENCE`: build/test/diff/smoke ссылки существуют, но нет свежего независимого Opus review и свежего Jev Verifier call именно для нового контракта.
 - Текущий prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; он не доказывает качество маршрутизации, полноту контекста или калибровку probability.
-- Не делать commit автоматически; commit/push остаются ручным действием пользователя.
+- Push, PR и merge не делать автоматически; локальные проверенные микрошаги фиксировать отдельными коммитами.
