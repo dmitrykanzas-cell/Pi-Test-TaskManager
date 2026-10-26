@@ -59,8 +59,8 @@ try {
   const observedApproveDir = await copyFixture("observed-approve");
   const observedVerdict = await readJson(observedApproveDir, "VERDICT.json");
   const observedLines = (await readFile(resolve(observedApproveDir, "OBSERVATIONS.jsonl"), "utf8"))
-    .trim().split(/\r?\n/).map((line) => JSON.parse(line));
-  const review = observedLines.find((item) => item.id === "review-002");
+    .trim().split(/\r?\n/).filter((line) => line.trim()).map((line) => JSON.parse(line));
+  const review = observedLines.find((item) => item.id === "review-001");
   review.id = "review-001";
   review.status = "observed";
   observedVerdict.decision = "APPROVE";

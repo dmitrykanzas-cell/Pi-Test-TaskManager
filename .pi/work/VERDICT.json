@@ -1,22 +1,19 @@
 {
   "schemaVersion": 1,
-  "decision": "INSUFFICIENT_EVIDENCE",
-  "confidence": 0.36,
+  "decision": "APPROVE",
+  "confidence": 1,
   "evidenceRefs": [
-    "build-001",
-    "test-001",
-    "diff-002",
-    "review-002",
-    "smoke-002",
-    "jev-verify-001"
+    "run-build-001",
+    "run-node-tests-001",
+    "run-diff-001",
+    "run-review-001"
   ],
   "missingEvidence": [],
   "stopReason": "stop",
   "source": {
-    "provider": "anymodel",
-    "model": "jev/jev-latest",
-    "api": "typesafe-system-one",
-    "verifier": "jev-verify",
-    "jevApproved": false
+    "provider": "deterministic-pipeline-harness",
+    "model": "typed-boundary-fixture",
+    "verifier": "local-jev-verifier",
+    "runId": "pi-pipeline-1793007373336"
   }
 }

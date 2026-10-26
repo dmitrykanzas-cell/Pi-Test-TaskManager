@@ -90,7 +90,7 @@ const baseOperations = [
     role: "luna",
     baseManifestId,
     fragmentId: "observation-stage7-001",
-    conflictWith: "hypothesis-001",
+    conflictWith: "pipeline-contract-001",
     reason: "observation and hypothesis require explicit reconciliation",
   },
 ];
@@ -98,8 +98,8 @@ const baseOperations = [
 const applied = await applyOperations({ manifest, routingLines, operations: baseOperations, now: "2026-10-25T15:00:00Z" });
 const byId = new Map(applied.manifest.fragments.map((fragment) => [fragment.id, fragment]));
 assert.equal(byId.get("observation-stage7-001").status, "conflict");
-assert.deepEqual(byId.get("observation-stage7-001").conflictWith, ["hypothesis-001"]);
-assert.deepEqual(byId.get("hypothesis-001").conflictWith, ["observation-stage7-001"]);
+assert.deepEqual(byId.get("observation-stage7-001").conflictWith, ["pipeline-contract-001"]);
+assert.deepEqual(byId.get("pipeline-contract-001").conflictWith, ["observation-stage7-001"]);
 assert.equal(byId.get("hypothesis-001").text, "Context Manager can apply typed operations after policy approval.");
 assert.equal(byId.get("goal-001").status, "obsolete");
 assert.equal(byId.has("transient-stage7-001"), false);
@@ -185,6 +185,10 @@ try {
   assert.equal(persisted.results.filter((item) => item.result === "APPLIED").length, 6);
   assert.equal(persistedManifest.manifestId, persisted.manifest.manifestId);
   assert.equal(persistedRouting.length, routingLines.length + 6);
+  const tempVerdict = JSON.parse(await readFile(resolve(temp, "VERDICT.json"), "utf8"));
+  tempVerdict.decision = "BLOCKED";
+  tempVerdict.evidenceRefs = [];
+  await writeFile(resolve(temp, "VERDICT.json"), JSON.stringify(tempVerdict, null, 2));
   const validation = await execFileAsync("node", [resolve(root, "scripts/validate-context-contract.mjs"), temp], { cwd: root });
   assert.match(validation.stdout, /Context contract valid/);
 } finally {

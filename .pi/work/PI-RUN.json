@@ -1,6 +1,7 @@
 {
-  "schemaVersion": 1,
-  "type": "PI_RUN",
+  "schemaVersion": 2,
+  "type": "PI_CONTEXT_EVIDENCE_PIPELINE_RUN",
+  "runId": "pi-pipeline-1793007373336",
   "status": "APPROVE",
   "steps": [
     {
@@ -9,46 +10,37 @@
       "candidateIds": [
         "goal-001",
         "decision-001",
-        "observation-001",
+        "pipeline-contract-001",
         "hypothesis-001"
       ]
     },
     {
       "actor": "JEV_ROUTER",
-      "state": "READY",
+      "status": "COMPLETED",
       "manifestPath": "CONTEXT-MANIFEST.luna.json"
     },
     {
-      "actor": "LUNA",
-      "action": "execute",
-      "tools": [
-        "dotnet build TaskManager.sln --nologo",
-        "dotnet test TaskManager.sln --nologo -v minimal",
-        "dotnet run --project src/TaskManager/TaskManager.csproj --no-build"
-      ]
+      "actor": "TOOLS_EVIDENCE",
+      "status": "COMPLETED",
+      "command": "C:\\Program Files\\nodejs\\node.exe --test scripts/pi-pipeline-core.test.mjs scripts/context-router.test.mjs scripts/jev-verifier.test.mjs"
     },
     {
-      "actor": "TOOLS",
-      "evidenceIds": [
-        "run-build-001",
-        "run-test-001",
-        "run-diff-001",
-        "run-review-001",
-        "run-smoke-001"
-      ]
+      "actor": "OPUS",
+      "status": "COMPLETED",
+      "decision": "APPROVE",
+      "source": "typed-boundary-fixture"
     },
     {
       "actor": "JEV_VERIFIER",
-      "decision": "APPROVE",
-      "verdictPath": "VERDICT.json"
+      "status": "COMPLETED",
+      "decision": "APPROVE"
     }
   ],
   "evidence": [
     "run-build-001",
-    "run-test-001",
+    "run-node-tests-001",
     "run-diff-001",
-    "run-review-001",
-    "run-smoke-001"
+    "run-review-001"
   ],
-  "limitation": "Luna/Jev provider calls are represented by typed local boundaries; tools, filesystem, Router and Verifier run for real."
+  "limitation": "Node tools, filesystem routing and Verifier run for real; Opus and Jev are typed local boundary fixtures."
 }

@@ -1,3 +1,9 @@
 {
-  "defaultTools": ["+codemode"]
+  "defaultTools": [
+    "+codemode"
+  ],
+  "packages": [
+    "extensions\\anymodel-classifier.ts",
+    "extensions\\pi-pipeline.ts"
+  ]
 }

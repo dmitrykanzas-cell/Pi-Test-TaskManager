@@ -1,24 +1,11 @@
-# Состояние
+# Состояние Pi Pipeline
 
-- Текущий этап: этап 11 автоматизация модулей Pi завершена; следующий этап отсутствует в MVP.
-- Решение: тестовый проект — локальный консольный TaskManager на C#.
-- Выполнено: solution, рабочие файлы Pi, TaskItem, статусы, приоритеты, JSON-хранилище, поиск/фильтрация и минимальный консольный сценарий.
-- Luna через Pi добавила тест `Query_CombinesTitleSearchWithPriorityFilter`; production-код не изменялся.
-- Opus через Pi проверил diff и дал `APPROVE`; блокирующих замечаний нет. Отдельно отмечен неотслеживаемый `.pi/extensions/anymodel-classifier.ts`, который нельзя случайно включить в коммит этого изменения.
-- Jev через Pi codemode/classifier получил typed-ответ: `stopReason=stop`, `answers.approved.type=bool`, `probability=0.74`.
-- Jev-ответ сохранён в `.pi/work/VERDICT.json`.
-- Проверка: `dotnet build TaskManager.sln` — успешно, 0 ошибок, 0 предупреждений.
-- Проверка: `dotnet test TaskManager.sln` — 10 тестов пройдено, 0 ошибок.
-- Проверка: smoke-сценарий `add → search → list → quit` ранее завершён успешно.
-- Этап 6 завершён: контракт контекста/evidence создан, усилен позитивными и негативными проверками, проревьюен Opus и проверен отдельным Jev Verifier-прогоном.
-- Архитектурная корректировка: Jev рассматривается как typed Context Manager, а также два отдельных контракта — `Router` до запуска модели и `Verifier` после сбора evidence. Jev предлагает операции над логическим контекстом, Pi проверяет и применяет их. Полнота поиска остаётся ответственностью Pi, а не Jev.
-- Добавлены `.pi/work/CONTEXT-MANIFEST.json`, `.pi/work/OBSERVATIONS.jsonl`, `.pi/work/ROUTING.jsonl`, `.pi/work/REVIEW.md`, `.pi/extensions/jev-verifier.ts` и `scripts/validate-context-contract.test.mjs`; проверены 4 фрагмента, 7 observations, provenance/status, relations и evidence policy.
-- `VERDICT.json` после финального прогона имеет `INSUFFICIENT_EVIDENCE`, `missingEvidence=[]`, `jevApproved=false`: Jev не подтвердил APPROVE несмотря на полный набор evidence. Это сохранено как фактический результат, а не заменено вручную.
-- Этап 7 завершён: `scripts/context-manager.mjs` применяет typed-операции через policy, обновляет manifest/routing через transaction marker и временные файлы с fail-closed recovery, сохраняет историю версий; сценарии этапа проверены end-to-end на копии `.pi/work`.
-- Этап 8 завершён: `scripts/context-router.mjs` принимает Pi-кандидатов и typed-решение Jev, формирует role-specific manifest для Luna/Opus, применяет проверки required/sensitive/limit/conflict и сохраняет `type=ROUTER` в `ROUTING.jsonl`; сценарии Router и файловая интеграция проверены.
-- Финальный набор evidence: build 0/0, test 10/10, diff check, smoke add/search/list/quit, независимое read-only Opus review и два запуска Jev Verifier.
-- Prior Jev probe доказывает только вызов classifier/codemode с `stopReason=stop`; новый Verifier дополнительно доказал чтение evidence и запись typed verdict, но не дал APPROVE.
-- Этап 9 завершён: `scripts/jev-verifier.mjs` разделяет typed decision и evidence policy, поддерживает APPROVE/REQUEST_CHANGES/BLOCKED/INSUFFICIENT_EVIDENCE, блокирует конфликт, provider error, отсутствующие/неподтверждённые evidence и не считает probability доказательством; сценарии и файловая интеграция проверены. Внешний `.pi/work/VERDICT.json` сохранён как фактический INSUFFICIENT_EVIDENCE, локальный APPROVE-тест не выдаётся за внешний Jev verdict.
-- Этап 10 завершён: `scripts/context-e2e.mjs` воспроизводимо прошёл цепочку REQUEST → Pi candidates → Router → Luna-path → real tools/evidence → Opus manifest → Verifier → human boundary; сохранена `.pi/work/E2E-TRACE.json`, обе ветки `APPROVE` и `INSUFFICIENT_EVIDENCE` проверены. Внешние вызовы Luna/Opus/Jev заменены typed boundary fixtures и явно не выдаются за provider run.
-- Этап 11 завершён: `scripts/pi-orchestrator.mjs` управляет `.pi/work`, Router, build/test/smoke, evidence, Verifier, `PI-RUN.json` и fail-closed обновлением STATE.md.
-- Push, PR и merge не делать автоматически; локальные проверенные микрошаги фиксировать отдельными коммитами.
+- Цель: самостоятельный Pi Context-Evidence Pipeline.
+- C# / TaskManager fixture удалён из репозитория и больше не является частью verification path.
+- Текущий scope: `.pi/extensions`, `.pi/work`, `scripts`, `docs`.
+- Обязательная цепочка: `ROUTER -> LUNA -> TOOLS_EVIDENCE -> OPUS -> JEV_VERIFIER`.
+- Локальные проверки должны использовать Node.js и pipeline contracts, без `dotnet`.
+- Deterministic fixtures проверяют границы Router/Verifier, но не заменяют live provider run.
+- Runtime state должен быть связан с актуальным `runId`; stale verdict не считается результатом нового запуска.
+- Следующий технический срез: полный contract-compliant `OBSERVATIONS.jsonl`, затем event log и history projection.
+- Push, PR, merge и commit автоматически не выполняются.
