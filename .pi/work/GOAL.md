@@ -2,7 +2,7 @@
 
 Создать и доказать самостоятельный Pi Context-Evidence Pipeline — наблюдаемую и fail-closed среду взаимодействия Pi, Jev Router, Luna, Tools, Opus и Jev Verifier.
 
-Репозиторий содержит только pipeline harness, его контракты, extension, тесты и документацию. Предметное приложение, C# fixture, календарь и Telegram не являются частью цели.
+Репозиторий содержит только pipeline harness, его контракты, Pi extensions, тесты и документацию. Предметное приложение не является частью цели.
 
 Целевой поток:
 

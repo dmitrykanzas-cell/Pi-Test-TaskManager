@@ -41,7 +41,7 @@ VERDICT.json           typed verdict с evidenceRefs
 - fixture не доказывает live provider call;
 - chain-of-thought не сохраняется;
 - push, PR, merge и commit не выполняются автоматически;
-- локальные tests не зависят от `dotnet` или domain fixture.
+- локальные tests не зависят от доменного приложения или внешних сервисов.
 
 ## Следующие проверки
 

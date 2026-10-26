@@ -1,6 +1,6 @@
 # Pi Context-Evidence Pipeline
 
-Репозиторий является самостоятельным harness для Pi Context-Evidence Pipeline. C#-, TaskManager-, Calendar- и Telegram-приложения сюда не входят.
+Репозиторий является самостоятельным harness для Pi Context-Evidence Pipeline. Предметное приложение и его fixture сюда не входят.
 
 ## Исполнительная схема
 
@@ -43,7 +43,7 @@ scripts/            core, router, context manager, verifier, harness, tests
 docs/               protocol documentation
 ```
 
-Domain fixtures, C# solution, `dotnet`, Calendar и Telegram намеренно отсутствуют.
+Предметные fixtures и внешние сервисы намеренно отсутствуют.
 
 ## Запуск
 
@@ -54,11 +54,13 @@ Domain fixtures, C# solution, `dotnet`, Calendar и Telegram намеренно 
 После установки extension текущую Pi-сессию нужно перезапустить. Для локального запуска из этого каталога:
 
 ```text
-pi install C:\Users\ThinkPad\Downloads\Pi-Test-TaskManager\.pi\extensions\anymodel-classifier.ts
-pi install C:\Users\ThinkPad\Downloads\Pi-Test-TaskManager\.pi\extensions\pi-pipeline.ts
+pi install <repo>/.pi/extensions/anymodel-classifier.ts
+pi install <repo>/.pi/extensions/pi-pipeline.ts
+pi install <repo>/.pi/extensions/jev-verifier.ts
+pi install <repo>/.pi/extensions/jev-probe.ts
 ```
 
-`--print` не диспетчеризует slash-команды. Регистрацию можно проверять через RPC `get_commands`.
+`/pi-pipeline` запускает полный live-required flow. `/jev-verify` проверяет текущий набор observations, а `/jev-probe` служит диагностической проверкой classifier. `--print` не диспетчеризует slash-команды; регистрацию можно проверять через RPC `get_commands`.
 
 ## Локальные проверки
 
@@ -70,7 +72,7 @@ node scripts/validate-context-contract.mjs .pi/work
 git diff --check
 ```
 
-Regression tests не делают сетевых вызовов и проверяют контракты локально. Deterministic E2E harness проверяет реальную файловую маршрутизацию и Verifier boundary, но не заменяет live-вызовы моделей.
+Regression tests не делают сетевых вызовов и проверяют контракты локально. Deterministic E2E harness проверяет файловую маршрутизацию и Verifier boundary, но не заменяет live-вызовы моделей. Core guard `assertLiveResult` не принимает fixture как live result.
 
 ## Наблюдаемость
 
@@ -132,6 +134,7 @@ RUNNING -> WAITING_FOR_USER -> RESUMED -> RUNNING
 - `APPROVE` требует текущие evidence и ссылки на текущий `runId`.
 - Старый `VERDICT.json` не является результатом нового запуска.
 - Неполное evidence даёт `INSUFFICIENT_EVIDENCE`, а не скрытый `APPROVE`.
+- Ошибка live provider или stale `RUNNING` trace даёт `BLOCKED`.
 
 Доказанным live pipeline считается только свежий trace с пятью завершёнными ролями:
 
