@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { routeToWorkDir } from "./context-router.mjs";
 import { verifyEvidenceFiles } from "./jev-verifier.mjs";
+import { appendRunEvent, createRunDirectory, writeRunArtifact, writeRunSnapshot } from "./run-store.mjs";
 
 const root = resolve(process.cwd());
 const workDir = resolve(root, ".pi/work");
@@ -63,11 +64,14 @@ const runRecord = {
 };
 
 const tempDir = await mkdtemp(join(tmpdir(), "pi-orchestrator-"));
+const runDirectory = await createRunDirectory(workDir, runRecord);
+await appendRunEvent(runDirectory, { actor: "PI", action: "run-created", runId: runRecord.runId });
 try {
   await cp(workDir, tempDir, { recursive: true });
   const manifest = JSON.parse(await readFile(resolve(workDir, "CONTEXT-MANIFEST.json"), "utf8"));
   const candidates = await collectCandidates(manifest);
   runRecord.steps.push({ actor: "PI", action: "candidate-retrieval", candidateIds: candidates.map((item) => item.id) });
+  await appendRunEvent(runDirectory, { actor: "PI", action: "candidate-retrieval", runId: runRecord.runId, candidateIds: candidates.map((item) => item.id) });
 
   const lunaRoute = await routeToWorkDir(tempDir, {
     role: "luna", candidates, requiredFragmentIds: ["goal-001", "decision-001"],
@@ -76,12 +80,14 @@ try {
   });
   assert.equal(lunaRoute.state, "READY");
   runRecord.steps.push({ actor: "JEV_ROUTER", status: "COMPLETED", manifestPath: "CONTEXT-MANIFEST.luna.json" });
+  await appendRunEvent(runDirectory, { actor: "JEV_ROUTER", action: "route", status: "COMPLETED", runId: runRecord.runId });
 
   const tests = simulateFailure
     ? { command: "simulated pipeline test failure", exitCode: 1, output: "simulated failure for fail-closed regression" }
     : run(process.execPath, ["--test", "scripts/pi-pipeline-core.test.mjs", "scripts/context-router.test.mjs", "scripts/jev-verifier.test.mjs"]);
   assertSuccess(tests);
   runRecord.steps.push({ actor: "TOOLS_EVIDENCE", status: "COMPLETED", command: tests.command });
+  await appendRunEvent(runDirectory, { actor: "TOOLS_EVIDENCE", action: "evidence", status: "COMPLETED", runId: runRecord.runId });
 
   const evidence = [
     { id: "run-build-001", kind: "build", text: "node syntax checks passed for pipeline scripts", status: "verified", source: "local-tools", sourceVersion: "working-tree", authority: "tool", freshness: "current", sensitivity: "public", targetModels: ["luna", "opus", "jev"], relatedFragments: ["goal-001"] },
@@ -98,6 +104,7 @@ try {
   const opusOutput = { decision: "APPROVE", stopReason: "stop", source: "deterministic-pipeline-harness", note: "Boundary fixture; no external reviewer call." };
   await writeFile(join(tempDir, "OPUS-REVIEW.json"), `${JSON.stringify(opusOutput, null, 2)}\n`);
   runRecord.steps.push({ actor: "OPUS", status: "COMPLETED", decision: opusOutput.decision, source: "typed-boundary-fixture" });
+  await appendRunEvent(runDirectory, { actor: "OPUS", action: "review", status: "COMPLETED", runId: runRecord.runId, decision: opusOutput.decision });
 
   const verdict = await verifyEvidenceFiles({
     workDir: tempDir,
@@ -106,10 +113,11 @@ try {
   });
   assert.equal(verdict.decision, "APPROVE");
   runRecord.steps.push({ actor: "JEV_VERIFIER", status: "COMPLETED", decision: verdict.decision });
+  await appendRunEvent(runDirectory, { actor: "JEV_VERIFIER", action: "verdict", status: "COMPLETED", runId: runRecord.runId, decision: verdict.decision });
   runRecord.status = "APPROVE";
   runRecord.evidence = evidence.map((item) => item.id);
   runRecord.limitation = "Node tools, filesystem routing and Verifier run for real; Opus and Jev are typed local boundary fixtures.";
-  await writeFile(resolve(workDir, "VERDICT.json"), `${JSON.stringify({
+  const verdictArtifact = {
     schemaVersion: 1,
     decision: verdict.decision,
     confidence: 1,
@@ -122,14 +130,20 @@ try {
       verifier: "local-jev-verifier",
       runId: runRecord.runId,
     },
-  }, null, 2)}\n`, "utf8");
+  };
+  await writeFile(resolve(workDir, "VERDICT.json"), `${JSON.stringify(verdictArtifact, null, 2)}\n`, "utf8");
+  await writeRunArtifact(runDirectory, "VERDICT.json", verdictArtifact);
   await writeFile(outputPath, `${JSON.stringify(runRecord, null, 2)}\n`, "utf8");
+  await writeRunSnapshot(runDirectory, runRecord);
+  await appendRunEvent(runDirectory, { actor: "PI", action: "run-completed", status: runRecord.status, runId: runRecord.runId });
   await updateState();
   console.log(JSON.stringify({ status: runRecord.status, outputPath, evidence: runRecord.evidence }, null, 2));
 } catch (error) {
   runRecord.status = "BLOCKED";
   runRecord.blocked = { code: error.code ?? "PI_RUN_FAILED", reason: error.message };
   await writeFile(outputPath, `${JSON.stringify(runRecord, null, 2)}\n`, "utf8");
+  await writeRunSnapshot(runDirectory, runRecord);
+  await appendRunEvent(runDirectory, { actor: "PI", action: "run-blocked", status: runRecord.status, runId: runRecord.runId, blocked: runRecord.blocked });
   console.error(JSON.stringify({ status: runRecord.status, outputPath, blocked: runRecord.blocked }, null, 2));
   process.exitCode = 1;
 } finally {

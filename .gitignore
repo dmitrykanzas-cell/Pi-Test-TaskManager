@@ -4,5 +4,6 @@
 *.suo
 
 .pi/agent/
+.pi/work/runs/
 .env
 *.key

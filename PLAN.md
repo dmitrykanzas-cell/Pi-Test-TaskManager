@@ -54,8 +54,8 @@ git diff --check
 
 ## Следующие этапы
 
-1. Выделить каталог `.pi/work/runs/<runId>/` и append-only `EVENTS.jsonl`.
-2. Добавить status/history/answer commands после отдельной проверки Pi API.
+1. Выделить каталог `.pi/work/runs/<runId>/` и append-only `EVENTS.jsonl` — CLI harness реализовано; extension пишет per-run snapshot и event log.
+2. Добавить status/history/answer commands после отдельной проверки Pi API — команды зарегистрированы в extension; `answer` переводит `WAITING_FOR_USER` в `RESUMED` без скрытого продолжения.
 3. Проверить live Router, Luna, Opus и Jev Verifier в свежем run.
 4. Добавить отдельный contract-test для provider evidence и stale-run recovery.
 

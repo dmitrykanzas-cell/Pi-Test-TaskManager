@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
@@ -10,9 +10,15 @@ const LUNA = "cx/gpt-6-luna";
 const OPUS = "cc/claude-opus-5-5";
 const JEV = "jev/jev-latest";
 
-type RunStatus = "RUNNING" | "APPROVE" | "REQUEST_CHANGES" | "BLOCKED" | "INSUFFICIENT_EVIDENCE";
-type Run = { schemaVersion: 2; type: string; runId: string; request: string; status: RunStatus; providerMode: "live-required"; steps: unknown[]; evidence: unknown[]; [key: string]: unknown };
+type RunStatus = "RUNNING" | "WAITING_FOR_USER" | "RESUMED" | "APPROVE" | "REQUEST_CHANGES" | "BLOCKED" | "INSUFFICIENT_EVIDENCE";
+type Question = { questionId: string; type: "single_select" | "text"; prompt: string; options?: Array<{ id: string; label: string }>; required: boolean };
+type Run = { schemaVersion: 2; type: string; runId: string; request: string; status: RunStatus; providerMode: "live-required"; steps: unknown[]; evidence: unknown[]; questions?: Question[]; [key: string]: unknown };
 
+function runDir(runId: string) { return resolve(WORK, "runs", runId); }
+async function appendEvent(run: Run, event: Record<string, unknown>) {
+  await mkdir(runDir(run.runId), { recursive: true });
+  await appendFile(resolve(runDir(run.runId), "EVENTS.jsonl"), `${JSON.stringify({ schemaVersion: 1, timestamp: new Date().toISOString(), runId: run.runId, ...event })}\n`, "utf8");
+}
 function step(run: Run, actor: string, status: string, details: Record<string, unknown> = {}) {
   run.steps.push({ timestamp: new Date().toISOString(), actor, status, ...details });
 }
@@ -23,6 +29,19 @@ function block(run: Run, role: string, code: string, reason: string) {
 async function save(run: Run) {
   await mkdir(WORK, { recursive: true });
   await writeFile(resolve(WORK, "PI-RUN.json"), `${JSON.stringify(run, null, 2)}\n`, "utf8");
+  await mkdir(runDir(run.runId), { recursive: true });
+  await writeFile(resolve(runDir(run.runId), "PI-RUN.json"), `${JSON.stringify(run, null, 2)}\n`, "utf8");
+}
+async function listRuns() {
+  try { return (await readdir(resolve(WORK, "runs"), { withFileTypes: true })).filter((item) => item.isDirectory()).map((item) => item.name); }
+  catch { return []; }
+}
+async function latestRun(): Promise<Run | null> {
+  const ids = await listRuns();
+  for (const id of ids.reverse()) {
+    try { return JSON.parse(await readFile(resolve(runDir(id), "PI-RUN.json"), "utf8")) as Run; } catch { /* ignore incomplete run */ }
+  }
+  try { return JSON.parse(await readFile(resolve(WORK, "PI-RUN.json"), "utf8")) as Run; } catch { return null; }
 }
 function textOf(content: unknown): string {
   if (typeof content === "string") return content;
@@ -135,6 +154,44 @@ async function applyTools(cwd: string, artifact: LunaArtifact): Promise<{ files:
 }
 
 export default function (pi: ExtensionAPI) {
+  pi.registerCommand("pi-pipeline-status", {
+    description: "Show the most recent Pi Pipeline run status",
+    handler: async (_args, ctx) => {
+      const run = await latestRun();
+      if (!run) { ctx.ui.notify("Pi Pipeline: no runs", "info"); return; }
+      const latest = run.steps.at(-1) as { actor?: string; status?: string } | undefined;
+      ctx.ui.notify(`${run.runId}: ${run.status}${latest ? `; last=${latest.actor ?? "?"}/${latest.status ?? "?"}` : ""}`, run.status === "BLOCKED" ? "warning" : "info");
+    },
+  });
+  pi.registerCommand("pi-pipeline-history", {
+    description: "List recent Pi Pipeline runs",
+    handler: async (_args, ctx) => {
+      const ids = (await listRuns()).slice(-10).reverse();
+      const entries: string[] = [];
+      for (const id of ids) {
+        try { const run = JSON.parse(await readFile(resolve(runDir(id), "PI-RUN.json"), "utf8")) as Run; entries.push(`${id} ${run.status}`); } catch { entries.push(`${id} INCOMPLETE`); }
+      }
+      ctx.ui.notify(entries.length ? entries.join("\n") : "Pi Pipeline: no run history", "info");
+    },
+  });
+  pi.registerCommand("pi-pipeline-answer", {
+    description: "Answer a pending typed question: <questionId> <optionId>",
+    handler: async (args, ctx) => {
+      const [questionId, answerId] = String(args ?? "").trim().split(/\s+/, 2);
+      const run = await latestRun();
+      if (!run || run.status !== "WAITING_FOR_USER") { ctx.ui.notify("Pi Pipeline has no run waiting for an answer", "warning"); return; }
+      const question = run.questions?.find((item) => item.questionId === questionId);
+      if (!question) { ctx.ui.notify(`Unknown question: ${questionId ?? "(missing)"}`, "error"); return; }
+      const valid = question.type === "text" ? Boolean(answerId) : question.options?.some((option) => option.id === answerId);
+      if (!valid) { ctx.ui.notify("Answer is missing or not one of the allowed option IDs", "error"); return; }
+      run.status = "RESUMED";
+      run.answer = { questionId, answerId, answeredAt: new Date().toISOString() };
+      await appendEvent(run, { actor: "HUMAN", action: "answer", questionId, answerId });
+      step(run, "HUMAN", "COMPLETED", { questionId, answerId });
+      await save(run);
+      ctx.ui.notify(`Answer recorded for ${questionId}; run ${run.runId} is RESUMED and requires explicit continuation.`, "info");
+    },
+  });
   pi.registerCommand("pi-pipeline", {
     description: "Run the complete live Pi Context-Evidence Pipeline",
     handler: async (args, ctx) => {
