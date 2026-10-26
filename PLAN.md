@@ -56,7 +56,7 @@ git diff --check
 
 1. Выделить каталог `.pi/work/runs/<runId>/` и append-only `EVENTS.jsonl` — реализовано в CLI harness и extension; корневые snapshots сохранены для совместимости.
 2. Добавить status/history/answer commands после отдельной проверки Pi API — команды зарегистрированы; `answer` переводит `WAITING_FOR_USER` в `RESUMED` без скрытого продолжения.
-3. Проверить live Router, Luna, Opus и Jev Verifier в свежем run.
+3. Проверить live Router, Luna, Opus и Jev Verifier в свежем run — не подтверждено: Pi 1.4.0 RPC-процесс загрузился, но на `get_commands` не вернул ответ за bounded probe; live pipeline не запускался и APPROVE не заявляется.
 4. Добавить отдельный contract-test для provider evidence и stale-run recovery — реализованы `assertLiveResult` и `recoverStaleRun`, покрыты core regression tests.
 
 ## Ограничения

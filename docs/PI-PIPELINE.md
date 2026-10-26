@@ -125,7 +125,7 @@ RUNNING -> WAITING_FOR_USER -> RESUMED -> RUNNING
 /pi-pipeline-answer <questionId> <answerId>
 ```
 
-Команды зарегистрированы в `.pi/extensions/pi-pipeline.ts`. `status` показывает latest run, `history` перечисляет per-run snapshots, а `answer` принимает только существующий typed question и переводит run из `WAITING_FOR_USER` в `RESUMED`; автоматического продолжения после ответа нет. Регистрационный smoke-test через реальный Pi API и live provider run остаются отдельными проверками.
+Команды зарегистрированы в `.pi/extensions/pi-pipeline.ts`. `status` показывает latest run, `history` перечисляет per-run snapshots, а `answer` принимает только существующий typed question и переводит run из `WAITING_FOR_USER` в `RESUMED`; автоматического продолжения после ответа нет. Регистрационный smoke-test через реальный Pi API пока не пройден: в bounded probe на Windows Pi 1.4.0 процесс не вернул ответ на `get_commands`, поэтому live provider run и полная live APPROVE-цепочка не заявляются.
 
 ## Fail-closed и доказательство успеха
 
