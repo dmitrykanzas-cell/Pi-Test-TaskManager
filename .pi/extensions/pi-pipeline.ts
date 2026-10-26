@@ -1,9 +1,12 @@
 import { appendFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-const ROOT = resolve(process.cwd());
+// Resolve the repository from the extension location, not from Pi's launch cwd.
+// This matters when Pi is started from Downloads while the extension belongs to a project.
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const WORK = resolve(ROOT, ".pi/work");
 const ROUTER = "anymodel";
 const LUNA = "cx/gpt-6-luna";

@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 export const PIPELINE_ROLES = ["ROUTER", "LUNA", "TOOLS_EVIDENCE", "OPUS", "JEV_VERIFIER"];
@@ -51,6 +52,10 @@ export function assertLiveResult(result, role) {
     throw new Error(`${role} did not produce a live provider result`);
   }
   return result;
+}
+
+export function projectRootFromExtension(extensionUrl) {
+  return resolve(dirname(fileURLToPath(extensionUrl)), "../..");
 }
 
 export function recoverStaleRun(run) {

@@ -109,6 +109,8 @@ event log -> state projection -> status line / history view
 
 MVP уже создаёт per-run каталог для orchestrator-прогонов: `.pi/work/runs/<runId>/PI-RUN.json`, `EVENTS.jsonl` и `VERDICT.json`. Корневые файлы `.pi/work/PI-RUN.json` и `.pi/work/VERDICT.json` сохраняются как совместимый latest snapshot. Projection из event log в отдельное history-представление пока не реализован.
 
+Extension разрешает корень проекта относительно собственного файла (`.pi/extensions/../..`), а не относительно `process.cwd()`. Поэтому Pi можно запускать из `Downloads` или другого каталога; рабочие файлы всё равно берутся из репозитория, которому принадлежит extension.
+
 ## Формальный вопрос пользователю
 
 Модель не просит пользователя свободной строкой. Pi создаёт typed `Question` и переводит run в `WAITING_FOR_USER`:

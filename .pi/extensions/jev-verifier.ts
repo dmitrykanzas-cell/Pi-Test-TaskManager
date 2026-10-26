@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 type Observation = {
@@ -26,6 +27,8 @@ type Verdict = {
 };
 
 const requiredEvidence = ["build", "test", "diff", "review"];
+// Resolve the repository from the extension location, not from Pi's launch cwd.
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 async function loadObservations(path: string): Promise<Observation[]> {
   const text = await readFile(path, "utf8");
@@ -39,7 +42,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("jev-verify", {
     description: "Run Jev Verifier against the current evidence set",
     handler: async (_args, ctx) => {
-      const workDir = resolve(process.cwd(), ".pi/work");
+      const workDir = resolve(ROOT, ".pi/work");
       const observationsPath = resolve(workDir, "OBSERVATIONS.jsonl");
       const verdictPath = resolve(workDir, "VERDICT.json");
       const observations = await loadObservations(observationsPath);

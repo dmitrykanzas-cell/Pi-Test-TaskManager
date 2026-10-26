@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { approve, assertLiveResult, blocked, createRun, PIPELINE_ROLES, recoverStaleRun, recordStep, writeRun } from "./pi-pipeline-core.mjs";
+import { approve, assertLiveResult, blocked, createRun, PIPELINE_ROLES, projectRootFromExtension, recoverStaleRun, recordStep, writeRun } from "./pi-pipeline-core.mjs";
 
 const temp = await mkdtemp(join(tmpdir(), "pi-pipeline-test-"));
 try {
@@ -11,6 +11,7 @@ try {
   const run = createRun("test request");
   assert.equal(recoverStaleRun(run).status, "BLOCKED");
   assert.equal(run.blocked.code, "STALE_RUNNING_TRACE");
+  assert.equal(projectRootFromExtension("file:///C:/repo/.pi/extensions/pi-pipeline.ts"), "C:\\repo");
   const terminal = createRun("terminal");
   terminal.status = "APPROVE";
   assert.equal(recoverStaleRun(terminal), terminal);
