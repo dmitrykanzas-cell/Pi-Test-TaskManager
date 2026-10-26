@@ -52,3 +52,8 @@ export function assertLiveResult(result, role) {
   }
   return result;
 }
+
+export function recoverStaleRun(run) {
+  if (run?.status !== "RUNNING") return run;
+  return blocked(run, "STALE_RUNNING_TRACE", "Previous run did not reach a terminal verdict", "PIPELINE");
+}

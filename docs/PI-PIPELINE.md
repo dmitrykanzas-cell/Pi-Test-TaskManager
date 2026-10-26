@@ -107,7 +107,7 @@ event log -> state projection -> status line / history view
   VERDICT.json
 ```
 
-Текущие файлы в `.pi/work/` остаются совместимым MVP-срезом. Перенос в каталог запуска и projection из `EVENTS.jsonl` ещё не считается реализованным.
+MVP уже создаёт per-run каталог для orchestrator-прогонов: `.pi/work/runs/<runId>/PI-RUN.json`, `EVENTS.jsonl` и `VERDICT.json`. Корневые файлы `.pi/work/PI-RUN.json` и `.pi/work/VERDICT.json` сохраняются как совместимый latest snapshot. Projection из event log в отдельное history-представление пока не реализован.
 
 ## Формальный вопрос пользователю
 
@@ -125,7 +125,7 @@ RUNNING -> WAITING_FOR_USER -> RESUMED -> RUNNING
 /pi-pipeline-answer <questionId> <answerId>
 ```
 
-Названия команд являются target protocol документации. До отдельной регистрационной и live-проверки их нельзя считать реализованными.
+Команды зарегистрированы в `.pi/extensions/pi-pipeline.ts`. `status` показывает latest run, `history` перечисляет per-run snapshots, а `answer` принимает только существующий typed question и переводит run из `WAITING_FOR_USER` в `RESUMED`; автоматического продолжения после ответа нет. Регистрационный smoke-test через реальный Pi API и live provider run остаются отдельными проверками.
 
 ## Fail-closed и доказательство успеха
 
